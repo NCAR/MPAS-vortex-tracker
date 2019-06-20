@@ -1,8 +1,8 @@
 ! To compile 
 
-! ifort -check bounds -warn all -o ../bin/mpas_to_latlon ./mpas_to_latlon.f90
-! ./mpas_filter_cells_by_area.f ./flip_to_cf.f90 ./mpas_vort_cell.f -I
-! ./datetime-fortran/build/include -L ../lib -ldatetime -lnetcdf
+! ifort -check bounds -warn all -o ~ahijevyc/bin/mpas_to_latlon ~ahijevyc/src/mpas_to_latlon.f90
+! ~ahijevyc/src/mpas_filter_cells_by_area.f ~ahijevyc/src/flip_to_cf.f90 ~ahijevyc/src/mpas_vort_cell.f -I
+! ~ahijevyc/src/datetime-fortran/build/include -L ~ahijevyc/lib -ldatetime -lnetcdf
 
 ! Original code from Michael Duda duda@ucar.edu
 ! adapted by Dave Ahijevych ahijevyc@ucar.edu
