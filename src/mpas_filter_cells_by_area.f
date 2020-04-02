@@ -40,14 +40,26 @@ C NCLEND
       ! require.
       write(0,*)'Entered mpas_filter_by_area'
 
-      write(0,*)'minval(cellsOnCell)=',minval(cellsOnCell)
-      write(0,*)'maxval(cellsOnCell)=',maxval(cellsOnCell)
+
+      ! From Apr 1, 2020 email from Michael Duda (via Wei Wang)
+      ! The valid cellsOnCell indices are still 1-based; however,
+      ! invalid cellsOnCell entries (i.e., those entries beyond
+      ! nEdgeOnCell) were recently changed to 0. In other words, when
+      ! looping through cellsOnCell for a particular cell, iCell, in the
+      ! mesh, it's important to only loop from 1 to nEdgesOnCell(iCell)
+      ! and not from 1 to maxEdges.
+
+      ! Used to make sure cellsOnCell had values that ranged from 1 to
+      ! nCells. But as of MPAS v7, zero is sometimes used for cell
+      ! numbers. I don't know what problem this sanity check was trying
+      ! to avoid, but I can't use it anymore. 
       if(maxval(cellsOnCell).gt.nCells
-     c              .or.minval(cellsOnCell).lt.1) then
+     c              .or.minval(cellsOnCell).lt.0) then
         write(0,*)'cellsOnCell(j,i)=',cellsOnCell(j,i)
         write(0,*)'but must be between 1 and ',nCells
         write(0,*)'minval(cellsOnCell)=',minval(cellsOnCell)
         write(0,*)'maxval(cellsOnCell)=',maxval(cellsOnCell)
+        write(0,*)'stopping'
         stop
       endif
 
