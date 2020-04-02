@@ -1,8 +1,8 @@
 ! To compile 
 
-! ifort -check bounds -warn all -o ~ahijevyc/bin/mpas_to_latlon ~ahijevyc/src/mpas_to_latlon.f90
-! ~ahijevyc/src/mpas_filter_cells_by_area.f ~ahijevyc/src/flip_to_cf.f90 ~ahijevyc/src/mpas_vort_cell.f -I
-! ~ahijevyc/src/datetime-fortran/build/include -L ~ahijevyc/lib -ldatetime -lnetcdf
+! ifort -check bounds -warn all -o mpas_to_latlon src/mpas_to_latlon.f90
+! src/mpas_filter_cells_by_area.f src/flip_to_cf.f90 src/mpas_vort_cell.f -I
+! src/datetime-fortran/build/include/ -L src/datetime-fortran/build/lib/ -ldatetime
 
 ! Original code from Michael Duda duda@ucar.edu
 ! adapted by Dave Ahijevych ahijevyc@ucar.edu
@@ -230,8 +230,9 @@ program mpas_to_latlon
     ! Assumes last 3 characters of input file are '.nc'.
 
     ! write to a directory named latlon_0.500deg_025km/.
-    write(outfile,'(A,F5.3,"deg_",I3.3,"km/",A,"_",F5.3,"deg_",I3.3,A)') &
-     'latlon_', grid_spacing, nint(filter_radius_km), &
+    write(junkc,'(A,F5.3,"deg_",I3.3,"km/")') &
+     'latlon_', grid_spacing, nint(filter_radius_km)
+    write(outfile,'(A,A,"_",F5.3,"deg_",I3.3,A)') TRIM(junkc), &
       TRIM(outfile), grid_spacing, nint(filter_radius_km), 'km.nc'
 
     write(0,*) ' mpas_to_latlon: creating output file '//trim(outfile)
@@ -239,9 +240,9 @@ program mpas_to_latlon
     ierr = nf_create(outfile,NF_64BIT_OFFSET, ncid_ll)
     if (ierr.ne.NF_NOERR) then 
         write(0,*) ' err for nf_create '//trim(outfile)
-        call getcwd(junkc)
-        write(0,*) 'in '//junkc
-        write(0,*) 'do you have permission to make a latlon_ directory here?'
+        write(0,*) ' subdirectory '//junkc//' must exist first'
+        write(0,*) ' Can you create it?'
+        write(0,*) '> mkdir '//junkc
         call handle_err(ierr)
     end if
 
@@ -447,6 +448,8 @@ program mpas_to_latlon
     ! Assumes Yellowstone environment (i.e. /glade/scratch/$USER/. directory)
     ! available to store savefile. Perhaps replace with home directory or /tmp
     ! directory for other institutions to use.
+    ! Tried to zero-pad lat and lon so we don't get spaces in the filename, but
+    ! fortran only zero-pads integers. 
     write(fmt='("/glade/scratch/",A,"/mpas_to_latlon/",A,"_",F5.3,"deg",I8.8,SP,F7.3,"N",F7.3,"N",F8.3,"E")', unit=savfile) &
       TRIM(username),trim(meshid), grid_spacing, nCells, lat0, lat1, startLon
     write(0,'(A)')'looking for save file "'//trim(savfile)//'"'
@@ -467,6 +470,7 @@ program mpas_to_latlon
         close(2)
     else
 
+        write(0,'(A)')'did not find save file'
         ierr = nf_inq_dimid(ncid, 'maxEdges', maxedges_id)
         if (ierr.ne.NF_NOERR) then
             write(0,*) ' err for maxedges id ', NF_STRERROR(ierr)
@@ -475,8 +479,11 @@ program mpas_to_latlon
         end if
 
         ierr = nf_inq_dim(ncid, maxedges_id, junkc, maxedges)
-        write(0,*) ' err for maxedges'
-        call handle_err(ierr)
+        if (ierr.ne.NF_NOERR) then
+            write(0,*) ' err for nf_inq_dim maxEdges ', NF_STRERROR(ierr)
+            call handle_err(ierr)
+            call exit(2)
+        end if
         write(0,*) ' maxedges for mesh ', maxedges
 
         allocate(lat_vertex(nvertices))
@@ -562,7 +569,7 @@ program mpas_to_latlon
 
         ! write expensive variables to save file, which can be used instead of
         ! rerunning this section of code.
-        write(0,'(A)')'writing to save file "'//trim(savfile)//'"'
+        write(0,'(A)')'writing to save file'
         open(unit=2, file=savfile, form='unformatted')
         write(2) maxEdges, interp_weights, interp_cells
         write(2) nEdgesOnCell
@@ -570,6 +577,7 @@ program mpas_to_latlon
         write(2) cellsOnCell
         write(2) areaCell
         close(2)
+        write(0,'(A)')'wrote expensive variables to save file "'//trim(savfile)//'"'
     end if
 
     ierr = nf_put_vara_double(ncid_ll, time_axis_id, 1, 1, days_since_1970(trim(fname)) )
@@ -625,8 +633,8 @@ program mpas_to_latlon
         !write(0,*)'calling mpas_filter_cells_by_area. nEdgesOnCell(1)=',nEdgesOnCell(1), 'cellsOnCell(:,1)=',cellsOnCell(:,1),'maxEdges=',maxEdges,'nCells=',nCells
         !write(0,*)' areaCell(1)=',areaCell(1), ' filter_radius_km=', filter_radius_km
         call mpas_filter_cells_by_area(nEdgesOnCell, cellsOnCell, areaCell, maxEdges, nVertLevels, nCells, input_var, filter_radius_km)
-        write(0,*)'after mpas_filter_cells_by_area: minval(cellsOnCell)=',minval(cellsOnCell)
-        write(0,*)'after mpas_filter_cells_by_area: maxval(cellsOnCell)=',maxval(cellsOnCell)
+        !write(0,*)'after mpas_filter_cells_by_area: minval(cellsOnCell)=',minval(cellsOnCell)
+        !write(0,*)'after mpas_filter_cells_by_area: maxval(cellsOnCell)=',maxval(cellsOnCell)
 
 
         
@@ -651,6 +659,7 @@ program mpas_to_latlon
     end do
 
     call handle_err( nf_close(ncid_ll) )
+    write(0,*) ' mpas_to_latlon: created '//trim(outfile)
     call handle_err( nf_close(ncid) )
 
 
