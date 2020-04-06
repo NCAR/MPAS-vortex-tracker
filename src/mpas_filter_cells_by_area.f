@@ -38,7 +38,7 @@ C NCLEND
       ! explain but it is quicker than calculating distances from 
       ! every cell to every cell which a circular filter would
       ! require.
-      write(0,*)'Entered mpas_filter_by_area'
+      !write(0,*)'Entered mpas_filter_by_area'
 
 
       ! From Apr 1, 2020 email from Michael Duda (via Wei Wang)
@@ -66,7 +66,7 @@ C NCLEND
       do i=1,nCells
         fpasses(i) = radius_km/sqrt(1e-6*areaCell(i)/pi)
       end do
-      write(0,*)'mpas_filter_by_area: calculated fpasses'
+      !write(0,*)'mpas_filter_by_area: calculated fpasses'
 
       do fpass = 1, maxval(fpasses)
         ! Each smoothing pass is conservative.

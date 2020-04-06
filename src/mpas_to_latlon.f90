@@ -96,7 +96,7 @@ program mpas_to_latlon
        write(0,*) 'Usage:'
        write(0,*) 'mpas_to_latlon fname grid_spacing filter_radius_km meshid [lat0 [lat1 [startLon]]]'
        write(0,*) 
-       write(0,*) ' fname            : input filename'
+       write(0,*) ' fname            : input MPAS filename'
        write(0,*) ' grid_spacing     : output grid spacing in degrees'
        write(0,*) ' filter_radius_km : radius of circular smoothing filter in km'
        write(0,*) ' meshid           : string to identify MPAS mesh (uni, wp, us, etc.)'
@@ -147,7 +147,7 @@ program mpas_to_latlon
     !
 
     ! read list of 2D vars from standard input
-    write(0,*) ' mpas_to_latlon: reading from standard input (ctrl-d to end) '
+    write(0,*) ' mpas_to_latlon: reading from standard input (use ctrl-d to end manual entry) '
     read(5,*,iostat=ierr) junkc
     ivar = 1
     do while(ierr == 0)
