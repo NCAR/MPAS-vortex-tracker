@@ -82,7 +82,7 @@ program mpas_to_latlon
     integer, dimension(3,max_lat_dimsize,max_lon_dimsize) :: interp_cells
     integer :: nlat, nlon, start_vertex, idimn, iatt
     real (kind=RKIND) :: latitude, longitude, startLon, degreesToRadians, RadiansToDegrees, lat0, lat1
-    character (len=256) :: fname, arg, savfile, outfile, username
+    character (len=256) :: fname, arg, savfile, outfile, tmpdir
     character (len=256) :: meshid, attname
     logical :: file_exists 
 
@@ -444,14 +444,14 @@ program mpas_to_latlon
     ! mpas2 mesh shifted around so the fine part is over the W Pacific.
     ! Add a mesh ID (mpas, mpas2, or mpas3)
     ! Finally added a mesh ID and recompiled on Jun 5, 2014.
-    call get_environment_variable("USER", username)
-    ! Assumes Yellowstone environment (i.e. /glade/scratch/$USER/. directory)
+    call get_environment_variable("TMPDIR", tmpdir)
+    ! Assumes $TMPDIR 
     ! available to store savefile. Perhaps replace with home directory or /tmp
     ! directory for other institutions to use.
     ! Tried to zero-pad lat and lon so we don't get spaces in the filename, but
     ! fortran only zero-pads integers. 
-    write(fmt='("/glade/scratch/",A,"/mpas_to_latlon/",A,"_",F5.3,"deg",I8.8,SP,F7.3,"N",F7.3,"N",F8.3,"E")', unit=savfile) &
-      TRIM(username),trim(meshid), grid_spacing, nCells, lat0, lat1, startLon
+    write(fmt='(A,"/",A,"_",I8.8,"_",F5.3,"deg",SP,F7.3,"N",F7.3,"N",F8.3,"E")', unit=savfile) &
+      TRIM(tmpdir),trim(meshid), nCells, grid_spacing, lat0, lat1, startLon
     write(0,'(A)')'looking for save file "'//trim(savfile)//'"'
     inquire(file=savfile, exist=file_exists)
     if (file_exists) then 
