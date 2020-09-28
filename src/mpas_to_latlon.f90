@@ -82,7 +82,7 @@ program mpas_to_latlon
     integer, dimension(3,max_lat_dimsize,max_lon_dimsize) :: interp_cells
     integer :: nlat, nlon, start_vertex, idimn, iatt
     real (kind=RKIND) :: latitude, longitude, startLon, degreesToRadians, RadiansToDegrees, lat0, lat1
-    character (len=256) :: fname, arg, savfile, outfile, tmpdir
+    character (len=256) :: fname, arg, savfile, odir, outfile, tmpdir
     character (len=256) :: meshid, attname
     logical :: file_exists 
 
@@ -166,7 +166,7 @@ program mpas_to_latlon
     !
 
     ierr = nf_open(trim(fname), NF_NOWRITE, ncid)
-    write(0,*)'opened '//trim(fname)//'. ncid=',ncid
+    write(0,*)'opened '//trim(fname)//' ncid=',ncid
     if (ierr.ne.NF_NOERR) then
         write(0,*) ' nf_open error opening mpas file '//trim(fname)
         call handle_err(ierr)
@@ -225,19 +225,19 @@ program mpas_to_latlon
     !
     outfile = basename(fname)
     !write(0,*) ' mpas_to_latlon: basename(fname)='//outfile
-    outfile = outfile(1:LEN_TRIM(outfile)-3)
-    !write(0,*) ' mpas_to_latlon: outfile='//outfile
     ! Assumes last 3 characters of input file are '.nc'.
+    outfile = outfile(1:LEN_TRIM(outfile)-3)
+    write(0,*) ' mpas_to_latlon: outfile='//TRIM(outfile)
 
     ! write to a directory named latlon_0.500deg_025km/.
-    write(junkc,'(A,F5.3,"deg_",I3.3,"km/")') &
+    write(odir,'(A,F5.3,"deg_",I3.3,"km/")') &
      'latlon_', grid_spacing, nint(filter_radius_km)
-    write(outfile,'(A,A,"_",F5.3,"deg_",I3.3,A)') TRIM(junkc), &
+    write(outfile,'(A,"_",F5.3,"deg_",I3.3,A)') &
       TRIM(outfile), grid_spacing, nint(filter_radius_km), 'km.nc'
 
-    write(0,*) ' mpas_to_latlon: creating output file '//trim(outfile)
+    write(0,*) ' mpas_to_latlon: creating output file '//trim(odir)//trim(outfile)
 
-    ierr = nf_create(outfile,NF_64BIT_OFFSET, ncid_ll)
+    ierr = nf_create(trim(odir)//outfile,NF_64BIT_OFFSET, ncid_ll)
     if (ierr.ne.NF_NOERR) then 
         write(0,*) ' err for nf_create '//trim(outfile)
         write(0,*) ' subdirectory '//junkc//' must exist first'
@@ -320,7 +320,7 @@ program mpas_to_latlon
     do i=1,nvars
         ierr = nf_inq_varid(ncid,interp_var_input(i),var_input_id(i))
         call handle_err(ierr)
-        write(0,*) 'got var_input_id for '//interp_var_input(i), var_input_id(i)
+        write(0,*) 'got var_input_id for '//TRIM(interp_var_input(i)), var_input_id(i)
         if (ierr.ne.NF_NOERR) then 
             write(0,*) ' ierr ',ierr,' for input var ',interp_var_input(i),var_input_id(i)
             call handle_err(ierr)
@@ -343,13 +343,15 @@ program mpas_to_latlon
            if (ierr.ne.NF_NOERR) write(0,*) ' err inq dimn ',idimn,junkc
            call handle_err(ierr)
            if (trim(junkc) .eq. 'nVertLevels' .or. junkc(1:10) .eq. 'nIsoLevels') then
+              write(0,*) ' found input vertical dimension '//TRIM(junkc)
               if (ndims < 3) then 
-                 write(0,*) ' found a vertical dimension but ndims=',ndims
+                 write(0,*) '  but ndims=',ndims
                  stop ! sanity check
               end if
               ierr = nf_inq_dimid(ncid_ll, junkc, levels_id)
               if(ierr.ne.NF_NOERR) then
                 ierr = nf_def_dim(ncid_ll, junkc, nVertLevels, levels_id)
+                write(0,*) ' define output vertical dimension '//TRIM(junkc)
                 if (ierr.ne.NF_NOERR) write(0,*) ' err defining vertical dimension for output',idimn,junkc
                 call handle_err(ierr)
               end if 
