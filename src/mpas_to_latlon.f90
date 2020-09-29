@@ -82,7 +82,7 @@ program mpas_to_latlon
     integer, dimension(3,max_lat_dimsize,max_lon_dimsize) :: interp_cells
     integer :: nlat, nlon, start_vertex, idimn, iatt
     real (kind=RKIND) :: latitude, longitude, startLon, degreesToRadians, RadiansToDegrees, lat0, lat1
-    character (len=256) :: fname, arg, savfile, odir, outfile, tmpdir
+    character (len=256) :: fname, arg, savfile, outfile, tmpdir
     character (len=256) :: meshid, attname
     logical :: file_exists 
 
@@ -94,9 +94,10 @@ program mpas_to_latlon
     if (iargc() < 3) then
        write(0,*) 
        write(0,*) 'Usage:'
-       write(0,*) 'mpas_to_latlon fname grid_spacing filter_radius_km meshid [lat0 [lat1 [startLon]]]'
+       write(0,*) 'mpas_to_latlon fname outfile grid_spacing filter_radius_km meshid [lat0 [lat1 [startLon]]]'
        write(0,*) 
        write(0,*) ' fname            : input MPAS filename'
+       write(0,*) ' outfile          : output filename'
        write(0,*) ' grid_spacing     : output grid spacing in degrees'
        write(0,*) ' filter_radius_km : radius of circular smoothing filter in km'
        write(0,*) ' meshid           : string to identify MPAS mesh (uni, wp, us, etc.)'
@@ -105,25 +106,31 @@ program mpas_to_latlon
        write(0,*) ' startLon         : starting longitude for output grid (default -180)'
        write(0,*) 
        write(0,*) 'Example:'
-       write(0,*) 'mpas_to_latlon diagnostics.2013-09-01_00:00:00.nc 0.5 25 mpas3 -5. 50. -180.'
+       write(0,*) 'mpas_to_latlon diagnostics.2013-09-01_00:00:00.nc latlon_0.500deg_025km/diagnostics.2013-09-01_00:00:00.nc 0.5 25 mpas3 -5. 50. -180.'
        write(0,*) 
        call exit(1) 
     end if
     call getarg(1,fname)
-    call getarg(2,arg)
-    read(arg,*) grid_spacing
+    call getarg(2,outfile)
+
+    if (fname == outfile) then
+        write(0,*)' mpas_to_latlon: infile equals outfile. Exiting'
+        call exit(1)
+    end if
     call getarg(3,arg)
-    read(arg,*) filter_radius_km
+    read(arg,*) grid_spacing
     call getarg(4,arg)
+    read(arg,*) filter_radius_km
+    call getarg(5,arg)
     read(arg,*) meshid
     lat0 = -90.0
     lat1 =  90.0
     startLon = -180.
-    call getarg(5,arg)
-    if (len_trim(arg).ne.0) read(arg,*) lat0 
     call getarg(6,arg)
-    if (len_trim(arg).ne.0) read(arg,*) lat1
+    if (len_trim(arg).ne.0) read(arg,*) lat0 
     call getarg(7,arg)
+    if (len_trim(arg).ne.0) read(arg,*) lat1
+    call getarg(8,arg)
     if (len_trim(arg).ne.0) read(arg,*) startLon
 
 
@@ -223,26 +230,10 @@ program mpas_to_latlon
     !
     ! create output file
     !
-    outfile = basename(fname)
-    !write(0,*) ' mpas_to_latlon: basename(fname)='//outfile
-    ! Assumes last 3 characters of input file are '.nc'.
-    outfile = outfile(1:LEN_TRIM(outfile)-3)
-    write(0,*) ' mpas_to_latlon: outfile='//TRIM(outfile)
-
-    ! write to a directory named latlon_0.500deg_025km/.
-    write(odir,'(A,F5.3,"deg_",I3.3,"km/")') &
-     'latlon_', grid_spacing, nint(filter_radius_km)
-    write(outfile,'(A,"_",F5.3,"deg_",I3.3,A)') &
-      TRIM(outfile), grid_spacing, nint(filter_radius_km), 'km.nc'
-
-    write(0,*) ' mpas_to_latlon: creating output file '//trim(odir)//trim(outfile)
-
-    ierr = nf_create(trim(odir)//outfile,NF_64BIT_OFFSET, ncid_ll)
+    ierr = nf_create(outfile,NF_64BIT_OFFSET, ncid_ll)
     if (ierr.ne.NF_NOERR) then 
         write(0,*) ' err for nf_create '//trim(outfile)
-        write(0,*) ' subdirectory '//junkc//' must exist first'
-        write(0,*) ' Can you create it?'
-        write(0,*) '> mkdir '//junkc
+        write(0,*) ' do you need to create a subdirectory first?'
         call handle_err(ierr)
     end if
 
@@ -342,7 +333,7 @@ program mpas_to_latlon
            ierr = nf_inq_dim(ncid,dimids(idimn),junkc,nVertLevels)
            if (ierr.ne.NF_NOERR) write(0,*) ' err inq dimn ',idimn,junkc
            call handle_err(ierr)
-           if (trim(junkc) .eq. 'nVertLevels' .or. junkc(1:10) .eq. 'nIsoLevels') then
+           if (trim(junkc) .eq. 'nVertLevels' .or. junkc(1:10) .eq. 'nIsoLevels' .or. junkc(2:12) == '_iso_levels') then
               write(0,*) ' found input vertical dimension '//TRIM(junkc)
               if (ndims < 3) then 
                  write(0,*) '  but ndims=',ndims
@@ -357,10 +348,12 @@ program mpas_to_latlon
               end if 
               ncount(3) = levels_id
               interp_var_nz(i) = nVertLevels
+           else
+              write(0,*) ' input dimension '//TRIM(junkc)//' not vertical'
            end if
         end do
         if (ndims >= 3 .and. ncount(3) == -1) then
-           write(0,*) ' no vertical dimension found in input but ndims=',ndims
+           write(0,'(A,I1,A)') ' no vertical dimension found in ',ndims,'-D input. stopping.'
            stop ! sanity check
         end if
         ! Definine output variable. Dimensions are longitude, latitude, and
@@ -451,7 +444,8 @@ program mpas_to_latlon
     ! available to store savefile. Perhaps replace with home directory or /tmp
     ! directory for other institutions to use.
     ! Tried to zero-pad lat and lon so we don't get spaces in the filename, but
-    ! fortran only zero-pads integers. 
+    ! fortran only zero-pads integers.
+    ! SP turns on leading + or - for the rest of the format string. 
     write(fmt='(A,"/",A,"_",I8.8,"_",F5.3,"deg",SP,F7.3,"N",F7.3,"N",F8.3,"E")', unit=savfile) &
       TRIM(tmpdir),trim(meshid), nCells, grid_spacing, lat0, lat1, startLon
     write(0,'(A)')'looking for save file "'//trim(savfile)//'"'
@@ -988,6 +982,9 @@ contains
           if (index(input,'diagnostics').gt.0) then
               i = index(input,'diagnostics')
               ccyy_mm_dd_hh_mm_ss = input(i+12:)
+          else if (index(input,'diag').gt.0) then
+              i = index(input,'diag')
+              ccyy_mm_dd_hh_mm_ss = input(i+5:)
           else if (index(input,'mpas.output.').gt.0) then
               i = index(input,'mpas.output.')
               ccyy_mm_dd_hh_mm_ss = input(i+12:)
