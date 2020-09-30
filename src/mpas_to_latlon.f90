@@ -1,8 +1,8 @@
 ! To compile 
 
 ! ifort -check bounds -warn all -o mpas_to_latlon src/mpas_to_latlon.f90
-! src/mpas_filter_cells_by_area.f src/flip_to_cf.f90 src/mpas_vort_cell.f -I
-! src/datetime-fortran/build/include/ -L src/datetime-fortran/build/lib/ -ldatetime
+! src/mpas_filter_cells_by_area.f src/flip_to_cf.f90 src/mpas_vort_cell.f 
+! src/datetime_module.f90 -lnetcdf
 
 ! Original code from Michael Duda duda@ucar.edu
 ! adapted by Dave Ahijevych ahijevyc@ucar.edu
@@ -1005,12 +1005,12 @@ contains
 
        a = datetime(iyear,imonth,iday,ihr,imin)
        b = datetime(1970,1,1,0,0)
-       write(0,*) 'a=',a.strftime("%Y %B %d %H %M %S")
-       write(0,*) 'b=',b.strftime("%Y %B %d %H %M %S")
-       write(0,*) 'date2num(a)=',date2num(a)
-       write(0,*) 'date2num(b)=',date2num(b)
+       !write(0,*) 'a=',a.strftime("%Y %B %d %H %M %S")
+       !write(0,*) 'b=',b.strftime("%Y %B %d %H %M %S")
+       !write(0,*) 'date2num(a)=',date2num(a)
+       !write(0,*) 'date2num(b)=',date2num(b)
        days_since_1970 = date2num(a) - date2num(b)
-       write(0,*) 'days_since_1970=',days_since_1970
+       !write(0,*) 'days_since_1970=',days_since_1970
       
     end function days_since_1970
 
