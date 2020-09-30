@@ -321,6 +321,9 @@ program mpas_to_latlon
             write(0,*) ' ierr ',ierr,' for nf_inq_var ',interp_var_input(i),var_input_id(i)
             call handle_err(ierr)
         end if
+
+
+        ! TODO: pass through 1-D coordinate variables without interpolating
         ncount = -1
         ncount(1) = lon_ll_id
         ncount(2) = lat_ll_id
@@ -998,11 +1001,16 @@ contains
 
        write(0,*) '"'//ccyy_mm_dd_hh_mm_ss//'"'
        read(ccyy_mm_dd_hh_mm_ss,'(I4,1x,I2,1x,I2,1x, I2,1x,I2,1x,I2)') iyear, imonth, iday, ihr, imin, isec
-       !write(0,*) 'iyear=',iyear,'imonth=',imonth,'iday=',iday,'ihr=',ihr,'imin=',imin,'isec=',isec
+       write(0,*) 'iyear=',iyear,'imonth=',imonth,'iday=',iday,'ihr=',ihr,'imin=',imin,'isec=',isec
 
        a = datetime(iyear,imonth,iday,ihr,imin)
        b = datetime(1970,1,1,0,0)
+       write(0,*) 'a=',a.strftime("%Y %B %d %H %M %S")
+       write(0,*) 'b=',b.strftime("%Y %B %d %H %M %S")
+       write(0,*) 'date2num(a)=',date2num(a)
+       write(0,*) 'date2num(b)=',date2num(b)
        days_since_1970 = date2num(a) - date2num(b)
+       write(0,*) 'days_since_1970=',days_since_1970
       
     end function days_since_1970
 
