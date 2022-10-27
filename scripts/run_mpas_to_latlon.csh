@@ -21,7 +21,7 @@ set lat0=-30
 set lat1=60
 set lon0=0
 set filter_radius_km=25
-set EXECUTABLE=~ahijevyc/bin/mpas_to_latlon
+set EXECUTABLE=/glade/scratch/ahijevyc/MPAS-vortex-tracker/mpas_to_latlon
 
 set current_date=`date -u +%Y%m%d`00
 set ymdh=$current_date
@@ -128,7 +128,7 @@ if ($status != 0) then
     echo problem making output directory $odir/gfdl_tracker
     exit 2
 endif
-foreach f (diag*.20[123]?-??-??_0[06].00.00.nc diag*.20[123]?-??-??_1[28].00.00.nc )
+foreach f (diag*.20??-??-??_0[06].00.00.nc diag*.20??-??-??_1[28].00.00.nc )
     set ofile=$odir/$f
     # Only do this file if it doesn't exist already. or if $f is newer than $ofile.
     # `ls -t1 $f $ofile` lists files one on each line with newest first
@@ -141,8 +141,8 @@ foreach f (diag*.20[123]?-??-??_0[06].00.00.nc diag*.20[123]?-??-??_1[28].00.00.
         touch $lock
 
         # limit vertical levels to these essential levels so mpas_to_latlon doesn't take so long.
-        ncrename -d nIsoLevelsU,u_iso_levels -d nIsoLevelsT,t_iso_levels -d nIsoLevelsZ,z_iso_levels -O $f $lock
-        ncks -d u_iso_levels,50000.,85000. -d t_iso_levels,30000.,50000. -d z_iso_levels,20000.,90000. -O $lock $lock
+        ncrename -d .nIsoLevelsU,u_iso_levels -d nIsoLevelsT,t_iso_levels -d nIsoLevelsZ,z_iso_levels -O $f $lock
+        ncks -d t_iso_levels,30000.,50000. -d z_iso_levels,20000.,90000. -O $lock $lock
 
         set args = (`printf '%s %5.3f %02d %s %4.1f %4.1f %6.1f' $ofile $delta $filter_radius_km $meshid $lat0 $lat1 $lon0`)
         # Stored list of fields to interpolate in file. Oct 6, 2017. 
