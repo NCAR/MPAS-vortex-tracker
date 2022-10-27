@@ -22,6 +22,9 @@ if ( $NCAR_HOST =~ dav ) then
 endif 
 
 
+setenv EXEDIR /glade/scratch/$USER/MPAS-vortex-tracker
+
+
 # set defaults
 set dxdetails=_0.500deg_025km
 set debug=0
@@ -90,7 +93,7 @@ foreach f (`ls diag*.$bcc??-??-??_0[06].00.00.nc \
     # Used to be at end of foreach block but it needs to occur with every iteration of the diagnostics
     # file loop, before any "continue" clause.
     # Use forecast_hour_links.py to output the number of minutes. Allows missing diag files. 
-    set fmin=`~ahijevyc/bin/forecast_hour_links.py -m $f`
+    set fmin=`$EXEDIR/scripts/forecast_hour_links.py -m $f`
     printf '%04d %05d\n' `expr $if + 1` $fmin >> $fort15
     @ if++
 
@@ -117,7 +120,7 @@ set out=diag.$mp.$ymd$h
 if (! -s $out) then
     echo Making $out
     # separate levels
-    python ~ahijevyc/bin/unstack_vertical_dim.py all.nc --ofile tmp.nc --clobber
+    python unstack_vertical_dim.py all.nc --ofile tmp.nc --clobber
     # Tracker program gettrk_main.f v3.9a can't handle variables with a vertical dimension.
     # It assumes a variable has only one pressure level.
     # delete unneeded variables.
@@ -180,7 +183,7 @@ set tcvitalsfile=tcvit_rsmc_storms.txt
 #if ($trackertype == 'tcgen') set tcvitalsfile=tcvit_genesis_storms.txt
 # Extract the date and hour that match the current init time
 # Consider using --fiorino option. 
-~ahijevyc/bin/wget_tcvitals.csh $ymd $h $tcvitalsfile
+$EXEDIR/scripts/wget_tcvitals.csh $ymd $h $tcvitalsfile
 if($trackertype == 'tracker' && ! -s $tcvitalsfile )then
     echo "No storms at initial time $ymd$h. Exiting $0." > no_tracker_storms
     cp no_tracker_storms $trackertype
