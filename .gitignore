@@ -1,3 +1,2 @@
 *__genmod.f90
-*__genmod.mod
-mpas_to_latlon
+*.mod
