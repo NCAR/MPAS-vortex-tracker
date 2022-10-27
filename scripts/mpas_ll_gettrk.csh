@@ -120,7 +120,7 @@ set out=diag.$mp.$ymd$h
 if (! -s $out) then
     echo Making $out
     # separate levels
-    python unstack_vertical_dim.py all.nc --ofile tmp.nc --clobber
+    python $EXEDIR/scripts/unstack_vertical_dim.py all.nc --ofile tmp.nc --clobber
     # Tracker program gettrk_main.f v3.9a can't handle variables with a vertical dimension.
     # It assumes a variable has only one pressure level.
     # delete unneeded variables.
