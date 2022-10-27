@@ -21,12 +21,12 @@ set lat0=-30
 set lat1=60
 set lon0=0
 set filter_radius_km=25
-set EXECUTABLE=/glade/scratch/ahijevyc/MPAS-vortex-tracker/mpas_to_latlon
+set EXECUTABLE=/glade/scratch/ahijevyc/MPAS-vortex-tracker/bin/mpas_to_latlon
 
 set current_date=`date -u +%Y%m%d`00
 set ymdh=$current_date
 set meshid=mpas_conv
-set fields_to_interpolate=/glade/work/ahijevyc/tracking_gfdl/mpas_fields_to_interpolate.txt
+set fields_to_interpolate=/glade/scratch/ahijevyc/MPAS-vortex-tracker/scripts/mpas_fields_to_interpolate.txt
 set workdir=/glade/scratch/$user
 
 while ("$1" != "")
