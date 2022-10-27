@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import pdb
 import sys
 import xarray
 
@@ -33,16 +34,19 @@ if os.path.exists(ofile) and not clobber:
 
 
 ds = xarray.open_dataset(ifile)
+ds = ds.swap_dims(dict(nIsoLevelsT="t_iso_levels",nIsoLevelsZ="z_iso_levels"))
 
 for level in ds.z_iso_levels:
     ilevel = str(int(level/100))
     new_name = f"height_{ilevel}hPa"
     ds[new_name] = ds.z_isobaric.sel(z_iso_levels=level)
+ds = ds.drop_vars("z_iso_levels")
 
 for level in ds.t_iso_levels:
     ilevel = str(int(level/100))
     new_name = f"temperature_{ilevel}hPa"
     ds[new_name] = ds.t_isobaric.sel(t_iso_levels=level)
+#ds = ds.drop_vars("t_iso_levels") # needed for average temperature derivation later
 
 if "u_iso_levels" in ds:
     for level in ds.u_iso_levels:
@@ -51,6 +55,7 @@ if "u_iso_levels" in ds:
         ds[new_name] = ds.uzonal_isobaric.sel(u_iso_levels=level)
         new_name = f"umeridional_{ilevel}hPa"
         ds[new_name] = ds.umeridional_isobaric.sel(u_iso_levels=level)
+    ds = ds.drop_vars("u_iso_levels")
 else:
     logging.warning("u_iso_levels not in Dataset")
 

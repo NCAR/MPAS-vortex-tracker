@@ -22,6 +22,7 @@ if ( $NCAR_HOST =~ dav ) then
 endif 
 
 
+setenv BINDIR /glade/scratch/$USER/standalone_gfdl-vortextracker_v3.9a/trk_exec
 setenv EXEDIR /glade/scratch/$USER/MPAS-vortex-tracker
 
 
@@ -86,8 +87,7 @@ mkdir -p gfdl_tracker/$trackertype
 set if=0
 set fort15=gfdl_tracker/fort.15
 if (-e $fort15) rm $fort15
-foreach f (`ls diag*.$bcc??-??-??_0[06].00.00.nc \
-           diag*.$bcc??-??-??_1[28].00.00.nc|sort` )
+foreach f (`ls diag.*$dxdetails.nc|sort` )
 
     # Append line to fort.15 (index of file starting with "0001" and forecast lead time in minutes) 
     # Used to be at end of foreach block but it needs to occur with every iteration of the diagnostics
@@ -114,7 +114,7 @@ touch $lock
 
 # Concatenate forecast lead times into 1 file. Don't reuse the name all.nc or treat as temporary file.
 # Read later for mslp.
-if (! -s all.nc) ncrcat -O ../diag*.$bcc??-??-??_??.00.00.nc all.nc
+if (! -s all.nc) ncrcat -O ../diag.*$dxdetails.nc all.nc
 
 set out=diag.$mp.$ymd$h
 if (! -s $out) then
