@@ -327,6 +327,7 @@ endif
 if ($user != ahijevyc) echo only user ahijevyc can rsync to server
 set echo
 # TODO: allow cp basin. when I added cp to the basin list, it collapsed the global plot longitude range to zero.
-python ~ahijevyc/bin/plot_atcf.py $workdir/gfdl_tracker/$trackertype/$atcf_with_warmcore_column global al wp ep io --stormname allstorms \
+conda activate
+python ~ahijevyc/bin/plot_atcf.py $workdir/gfdl_tracker/$trackertype/$atcf_with_warmcore_column --basins global al wp ep io \
     --project $mp --origmesh --diagdir $idir/$mp/$yyyymmddhh --initfile $idir/$mp/$yyyymmddhh/init.nc --force_new $toserver
 
