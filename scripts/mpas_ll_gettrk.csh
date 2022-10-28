@@ -72,15 +72,6 @@ if ($justplot) goto PLOT
 
 cd $workdir
 
-
-set refdate=`echo $workdir|sed -e 's,.*/\([12][09][0-9][0-9][01][0-9][0123][0-9][012][0-9]\).*,\1,'`
-set bcc=`echo $refdate|cut -c1-2`
-set byy=`echo $refdate|cut -c3-4`
-set m=`echo $refdate|cut -c5-6`
-set dd=`echo $refdate|cut -c7-8`
-set h=`echo $refdate|cut -c9-10`
-set ymd=$bcc$byy$m$dd
-set refdate=$bcc$byy-$m-$dd
 mkdir -p gfdl_tracker/$trackertype
 # used to use simple wildcard, but it matched hours between multiples of 3
 # Hourly files were present for random dates, like mpas3/2013092700.
@@ -116,6 +107,19 @@ touch $lock
 # Read later for mslp.
 if (! -s all.nc) ncrcat -O ../diag.*$dxdetails.nc all.nc
 
+# Used to assume workdir contained a yyyymmddhh string and pull initdate from that. Now get initdate from earliest 
+# time in all.nc using ncdump. 
+# Find last line with " time = " in it, grab its first field split by commas, grab its 2nd field split 
+# by equals sign, and remove quotes. Extract time components with date function and various output formats.
+set d=`ncdump -v time all.nc -t | grep " time = " | tail -n 1 | cut -d , -f 1 | cut -d= -f2 | tr -d \"`
+set initdate=`date --date="$d" "+%Y-%m-%d"`
+set bcc=`echo $d|cut -c1-2`
+set byy=`date --date="$d" "+%y"`
+set m=`date --date="$d" "+%m"`
+set dd=`date --date="$d" "+%d"`
+set h=`date --date="$d" "+%H"`
+set ymd=$bcc$byy$m$dd
+
 set out=diag.$mp.$ymd$h
 if (! -s $out) then
     echo Making $out
@@ -143,7 +147,7 @@ if (! -s $out) then
     # with 10 or 9 followed by 2 digits, then a decimal,
     # then another digit.  This matches pressure in hPa in mslp dump. Pressure
     # in Pa should not match. 2013 diagnostics mslp output was in hPa; 2014 in Pa.
-    ncdump -v mslp ../diag*.${refdate}_${h}.00.00.nc | tail | grep -P " (10|9)\d\d\.\d"
+    ncdump -v mslp ../diag*.${initdate}_${h}.00.00.nc | tail | grep -P " (10|9)\d\d\.\d"
     if ($status == 0) then
         ncap2 -O -s 'mslp=100.*mslp;' all.nc mslp.nc
         ncks -A mslp.nc tmp.nc
@@ -151,7 +155,7 @@ if (! -s $out) then
     endif
 
     # Set reference time of relative time axis and set base units to hours.
-    cdo -O -setreftime,$refdate,${h}:00:00,1hour tmp.nc tmp2.nc
+    cdo -O -setreftime,$initdate,${h}:00:00,1hour tmp.nc tmp2.nc
 
     # Bypass longitude problem by outputting 0-360 with mpas_to_latlon. - Jan 2019
     # gettrk handles flipped latitude now. 
