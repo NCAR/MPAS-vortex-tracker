@@ -27,19 +27,22 @@ logger.setLevel(logging.INFO)
 parser = argparse.ArgumentParser(description='plot tropical cyclone track/intensity from ATCF file',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('atcf_file', type=argparse.FileType('r'), help='path to ATCF file to plot and possibily modify')
 parser.add_argument('--basins', nargs='*', default=[], type=str, help='basin(s) to plot')
+parser.add_argument('--clobber', action="store_true", help='overwrite old file')
 parser.add_argument('-d','--debug', action="store_true", help='print debug messages')
 parser.add_argument('--diagdir', type=str, help='path to directory with original model diagnostic files. In case of ensemble, path to directory above member subdirectories i.e. do not include member subdirectory.')
+parser.add_argument('--dpi', type=int, default=128, help='output resolution (dots per inch)')
 parser.add_argument('--initfile', type=str, help='path to init.nc file with latCell,lonCell,nEdgesOnCell,cellsOnCell')
 parser.add_argument('--initial_time', type=lambda d: datetime.datetime.strptime(d, '%Y%m%d%H'), help='initialization date/hour yyyymmddhh')
-parser.add_argument('--models', nargs='*', type=str, help='only plot this model(s)')
-parser.add_argument('--clobber', action="store_true", help='overwrite old file')
-parser.add_argument('--origmesh', dest='origmesh', action="store_true", help='use original mesh')
-parser.add_argument('--no-origmesh', dest='origmesh', action="store_false", help='do not use original mesh')
-parser.set_defaults(origmesh=True)
-parser.add_argument('--project', type=str, default="precip2020", help='project name, like precip2020 or hur15. Used to name image on web server.')
-parser.add_argument('--wind_radii_method', type=atcf.iswind_radii_method, default='max', help='method to get wind extent from original mesh')
 parser.add_argument('--min_warmcore_percent', type=float, default=25, help='minimum %% of warm core track times') # double percent sign to print single percent sign
+parser.add_argument('--models', nargs='*', type=str, help='only plot this model(s)')
+
+origmesh_group = parser.add_mutually_exclusive_group()
+origmesh_group.add_argument('--origmesh',    dest='origmesh', action="store_true", help='use original mesh')
+origmesh_group.add_argument('--no-origmesh', dest='origmesh', action="store_false", help='do not use original mesh')
+
+parser.add_argument('--project', type=str, default="precip2020", help='project name, like precip2020 or hur15. Used to name image on web server.')
 parser.add_argument('--to_server', action="store_true", help='rsync to MMM server')
+parser.add_argument('--wind_radii_method', type=atcf.iswind_radii_method, default='max', help='method to get wind extent from original mesh')
 args = parser.parse_args()
 
 debug = args.debug
@@ -48,9 +51,10 @@ if debug:
 
 logging.debug(args)
 
-plotbasins   = args.basins
+basins       = args.basins
 clobber      = args.clobber
 diagdir      = args.diagdir
+dpi          = args.dpi
 initfile     = args.initfile
 min_warmcore_percent = args.min_warmcore_percent
 models       = args.models
@@ -131,8 +135,11 @@ logging.info(f'{df.groupby(unique_track).ngroups} after vmax filter')
 #print(df.groupby(unique_track).ngroups)
 
 # If warmcore column exists make sure at least one time is warmcore or unknown.
-df = df.groupby(unique_track).filter(atcf.iswarmcore)
-logging.info(f'{df.groupby(unique_track).ngroups} after warmcore filter')
+if "warmcore" in df.columns:
+    df = df.groupby(unique_track).filter(atcf.iswarmcore, min_warmcore_percent=min_warmcore_percent)
+    logging.info(f'{df.groupby(unique_track).ngroups} after warmcore filter')
+else:
+    warmcore_desc = f"No warm core filter"
 
 # Remove short tracks
 df = df.groupby(unique_track).filter(lambda x: x["fhr"].nunique() > 2)
@@ -193,9 +200,11 @@ fineprint += f"{warmcore_desc}\ninput file: {atcf_file}\ncreated {datetime.datet
 
 # Regional plots
 extents = atcf.basin_bounds
-for plotbasin in plotbasins + ['storm']:
+for plotbasin in basins + ['storm']:
     plt.subplots(figsize=(11,7.5))
-    plt.tight_layout(rect=(0,0.1,0.98,0.95)) # rect=(left,bottom,right,top) keeps room for legend and prevents labels from being chopped off
+    # rect=(left,bottom,right,top) keeps room for legend and prevents labels from being chopped off
+    # rect=(0,0,1,1) is default 
+    plt.tight_layout(rect=(0,0.1,1,1))
     projection = cartopy.crs.PlateCarree()
     # New axes for each plotbasin, or lat/lon grid spacing will be messed up.
     ax = atcf.get_ax(projection=projection)
@@ -205,7 +214,8 @@ for plotbasin in plotbasins + ['storm']:
     for (basin, cy, initial_time, model), track in df.groupby(unique_track):
         start_label = cy + "\n" + track.valid_time.min().strftime('%-m/%-d %-Hz') # used to have initial time. why?
         end_label = cy + " " + track.valid_time.max().strftime('%-m/%-d %-Hz')
-        logging.info(f'plot_track {start_label}-{end_label}')
+        duration  = track.valid_time.max() - track.valid_time.min()
+        logging.info(f'plot_track {cy} {duration}')
         atcf.plot_track(ax, start_label, track, end_label, label_interval_hours=label_interval_hours, debug=debug)
         # get storm name if present
         stormname = atcf.get_stormname(track)
@@ -226,7 +236,7 @@ for plotbasin in plotbasins + ['storm']:
     plt.annotate(text=fineprint, xy=(10,2), xycoords='figure pixels', fontsize=5)
 
     ofile = atcf_file + f".{plotbasin}.png"
-    plt.savefig(ofile)
+    plt.savefig(ofile, dpi=dpi)
     logging.info(f'created {os.path.realpath(ofile)}')
     #put on web server
     if args.to_server:
