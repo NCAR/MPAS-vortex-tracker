@@ -163,11 +163,11 @@ def get_origmesh(track, initfile):
         logging.info(f'get raw mesh vmax and minp for {len(track.lon)} times, track {track.name}')
         # Return initfile too if you want to save the lat/lon information as a dictionary and speed things up.
         # Avoid opening and re-opening the same file over and over again.
-        og, initfile = mpas.origmesh(track, initfile, diagdir, wind_radii_method=wind_radii_method, debug=debug)
+        og, initfile = mpas.origmesh(track, initfile, diagdir, wind_radii_method=wind_radii_method)
     elif (model == 'ECMF' or re.compile("EE[0-9][0-9]$").match(model)):
         if all(track.rad.astype('int') == 0):
             logging.info(f"{model} getting radius of max wind and radii of 34/50/64 kt wind from {diagdir}")
-            og = atcf.origgrid(track, diagdir, ensemble_prefix=["PF","CF","EE","EE0"], wind_radii_method=wind_radii_method, debug=debug)
+            og = atcf.origgrid(track, diagdir, ensemble_prefix=["PF","CF","EE","EE0"], wind_radii_method=wind_radii_method)
         else:
             logging.error("That is odd. You requested original mesh values but the atcf file already has non-zero radii")
             sys.exit(1)
@@ -176,7 +176,7 @@ def get_origmesh(track, initfile):
         # Might help prevent applying d03 grid to d02 tracks, or vice versa.
         grid="d03"
         origmeshFile += grid
-        og = atcf.origgridWRF(track, diagdir, grid=grid, wind_radii_method=wind_radii_method, debug=debug)
+        og = atcf.origgridWRF(track, diagdir, grid=grid, wind_radii_method=wind_radii_method)
     else:
         logging.warning(f"no origmesh for {model}")
         return track # used to exit return code=3 but why do that if you have OFCL forecast in same file as model forecasts? that's fine.
@@ -192,7 +192,7 @@ if origmesh:
     # Keep if not a cyclogenesis track or TS strength for at least one time.
     df = df.groupby(unique_track).filter(lambda x: (x["basin"] != "TG").all() or (x["vmax"].max() >=  34))
     logging.info(f"after origmesh {df.groupby(unique_track).ngroups}")
-    atcf.write(origmeshFile, df, debug=debug)
+    atcf.write(origmeshFile, df)
     fineprint += "\noutputfile: " + origmeshFile
     atcf_file = origmeshFile
 
@@ -216,12 +216,12 @@ for plotbasin in basins + ['storm']:
         end_label = cy + " " + track.valid_time.max().strftime('%-m/%-d %-Hz')
         duration  = track.valid_time.max() - track.valid_time.min()
         logging.info(f'plot_track {cy} {duration}')
-        atcf.plot_track(ax, start_label, track, end_label, label_interval_hours=label_interval_hours, debug=debug)
+        atcf.plot_track(ax, start_label, track, end_label, label_interval_hours=label_interval_hours)
         # get storm name if present
         stormname = atcf.get_stormname(track)
         if stormname:
             # get ibtracks best track 
-            idf, ifile = ibtracs.get_atcf(stormname, track.valid_time.min().strftime('%Y'), debug=debug)
+            idf, ifile = ibtracs.get_atcf(stormname, track.valid_time.min().strftime('%Y'))
             atcf.plot_track(ax, stormname, idf, stormname, label_interval_hours=label_interval_hours)
 
     if plotbasin in extents:
