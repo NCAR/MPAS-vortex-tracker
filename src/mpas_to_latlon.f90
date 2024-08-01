@@ -2,7 +2,7 @@
 
 ! ifort -check bounds -warn all -o mpas_to_latlon src/mpas_to_latlon.f90
 ! src/mpas_filter_cells_by_area.f src/flip_to_cf.f90 src/mpas_vort_cell.f 
-! src/datetime_module.f90 -lnetcdf
+! src/datetime_module.f90 -lnetcdff
 
 ! Original code from Michael Duda duda@ucar.edu
 ! adapted by Dave Ahijevych ahijevyc@ucar.edu
@@ -581,14 +581,17 @@ program mpas_to_latlon
 
     ierr = nf_put_vara_double(ncid_ll, time_axis_id, 1, 1, days_since_1970(trim(fname)) )
     call handle_err(ierr)
+    !write(0,'(A)')'put time'
     ierr = nf_put_var_double(ncid_ll, lat_ll_v_id, lat_ll(:,1)*RadiansToDegrees )
     call handle_err(ierr)
+    !write(0,'(A)')'put lat_ll_v'
     ierr = nf_put_var_double(ncid_ll, lon_ll_v_id, lon_ll(1,:)*RadiansToDegrees )
     call handle_err(ierr)
     ierr = nf_put_var_double(ncid_ll, grid_spacing_id, grid_spacing)
     call handle_err(ierr)
     ierr = nf_put_var_double(ncid_ll, filter_radius_km_id, filter_radius_km)
     call handle_err(ierr)
+    !write(0,'(A,F5.1)')'put filter_radius_km ', filter_radius_km
  
     ! for each variable - read, interp, and write
     do i=1,nvars
@@ -600,10 +603,10 @@ program mpas_to_latlon
         ierr = nf_inq_var(ncid, var_input_id(i), junkc, xtype, ndims, dimids, natts)
         call handle_err(ierr)
   
-        !write(0,*) '1 nlon=',nlon,' nlat=',nlat,' ncid=',ncid,' var_input_id(i)=',var_input_id(i)
+        write(0,*) '1 nlon=',nlon,' nlat=',nlat,' ncid=',ncid,' var_input_id(i)=',var_input_id(i)
         ierr = nf_inq_vardimid(ncid, var_input_id(i), dimids)
         call handle_err(ierr)
-        !write(0,*) '2 dimids=',dimids, ' nVertices_id=',nVertices_id,' nlon=',nlon,' nlat=',nlat, ierr
+        write(0,*) '2 dimids=',dimids(1:5), ' nVertices_id=',nVertices_id,' nlon=',nlon,' nlat=',nlat, ierr
         if (dimids(1) .eq. nVertices_id) then 
             write(0,*) trim(interp_var_output(i))//' is a vertex variable with ',nVertices,'vertices'
             allocate(input_var_vertices(nVertLevels,nVertices))
@@ -616,12 +619,13 @@ program mpas_to_latlon
             end if
 
             ! INPUT: input_var_vertices OUTPUT: input_var (on cells)
-            !write(0,*)'calling mpas_vort_cell1'
+            write(0,*)'calling mpas_vort_cell1'
             call mpas_vort_cell1(nEdgesOnCell, verticesOnCell, maxEdges, nVertLevels, nCells, nVertices, input_var_vertices, input_var)
 
 
             deallocate(input_var_vertices)
         else
+            write(0,*) 'not a vertex variable'
             ierr = nf_get_var_double( ncid,var_input_id(i),input_var)
             call handle_err(ierr)
         end if
