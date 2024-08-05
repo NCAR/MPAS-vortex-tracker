@@ -1,3 +1,8 @@
+module flip
+    implicit none
+    private
+    public :: flip_to_cf
+contains
     subroutine flip_to_cf(xin,xout,nlon,nlat,nz)
 
         ! Copied from flip_to_cf_and_box_smooth Feb 16, 2014
@@ -20,3 +25,4 @@
         end do
  
     end subroutine flip_to_cf
+end module flip
