@@ -10,11 +10,7 @@ meanT_500_300
 mslp
 #temperature_200hPa covered by t_isobaric
 u10
-umeridional_500hPa
-umeridional_700hPa
-umeridional_850hPa
-uzonal_500hPa
-uzonal_700hPa
-uzonal_850hPa
+umeridional_isobaric
+uzonal_isobaric 
 v10
 z_isobaric

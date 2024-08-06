@@ -38,8 +38,6 @@ program mpas_to_latlon
 
     include 'netcdf.inc'
 
-    integer, external :: iargc
-
     real (kind=RKIND), dimension(max_nCells_dimsize) :: lat_cell, lon_cell
     real (kind=RKIND), allocatable, dimension(:) :: lat_vertex, lon_vertex, areaCell
     real (kind=RKIND), allocatable, dimension(:,:) :: input_var, input_var_vertices
@@ -57,7 +55,7 @@ program mpas_to_latlon
     character (len=30), dimension(100) :: interp_var_input, interp_var_output
     integer, dimension(100) :: interp_var_nz, var_output_id, var_input_id
     real (kind=RKIND) :: grid_spacing ! lat-lon mesh spacing in degrees
-    real :: filter_radius_km  ! smoothing radius km (zero for no smoothing)
+    real (kind=RKIND) :: filter_radius_km  ! smoothing radius km (zero for no smoothing)
     integer :: nvars, ivar, ierr, ncid, ncells, ncells_id
     integer :: latcell_id, loncell_id, areaCell_id
     integer :: nvertices, nvertices_id, levels_id, nvertlevels
@@ -101,7 +99,8 @@ program mpas_to_latlon
        write(0,*) ' startLon         : starting longitude for output grid (default -180)'
        write(0,*) 
        write(0,*) 'Example:'
-       write(0,*) 'mpas_to_latlon diagnostics.2013-09-01_00:00:00.nc latlon_0.500deg_025km/diagnostics.2013-09-01_00:00:00.nc 0.5 25 mpas3 -5. 50. -180.'
+       write(0,*) 'mpas_to_latlon diagnostics.2013-09-01_00:00:00.nc latlon_0.500deg_025km/diagnostics.2013-09-01_00:00:00.nc'
+       write(0,*) ' 0.5 25 mpas3 -5. 50. -180.'
        write(0,*) 
        call exit(1) 
     end if
@@ -137,8 +136,8 @@ program mpas_to_latlon
     nlon = ceiling(360. / grid_spacing)
     if(nlat>max_lat_dimsize.or.nlon>max_lon_dimsize)then
        write(0,*)
-       write(0,*)' mpas_to_latlon: either max_lat_dimsize or max_lon_dimsize is too small. &
-           recompile after making it bigger.'
+       write(0,*)' mpas_to_latlon: either max_lat_dimsize or max_lon_dimsize is too small. '
+       write(0,*)' recompile after making it bigger.'
        write(0,*)
        call exit(1)
     endif
@@ -287,17 +286,19 @@ program mpas_to_latlon
     call handle_err(ierr)
 
 
-    ierr = nf_def_var( ncid_ll, 'mesh_spacing', NF_DOUBLE, 0, 0, grid_spacing_id )
+    ierr = nf_def_var( ncid_ll, 'mesh_spacing', NF_DOUBLE, 0, [0], grid_spacing_id )
     call handle_err(ierr)
-    ierr = nf_put_att_text(ncid_ll, grid_spacing_id, 'long_name', len('lat lon grid spacing (command line argument passed to mpas_to_latlon)'), &
-                                                                      'lat lon grid spacing (command line argument passed to mpas_to_latlon)')
+    ierr = nf_put_att_text(ncid_ll, grid_spacing_id, 'long_name', &
+        len('lat lon grid spacing (command line argument passed to mpas_to_latlon)'), &
+            'lat lon grid spacing (command line argument passed to mpas_to_latlon)')
     call handle_err(ierr)
     ierr = nf_put_att_text(ncid_ll, grid_spacing_id, 'units',     len('degrees'),    'degrees')
     call handle_err(ierr)
-    ierr = nf_def_var( ncid_ll, 'filter_radius_km', NF_DOUBLE,    0, 0, filter_radius_km_id )
+    ierr = nf_def_var( ncid_ll, 'filter_radius_km', NF_DOUBLE,    0, [0], filter_radius_km_id )
     call handle_err(ierr)
-    ierr = nf_put_att_text(ncid_ll, filter_radius_km_id, 'long_name', len('radius of influence for mpas_to_latlon smoothing filter'), &
-                                                                     'radius of influence for mpas_to_latlon smoothing filter')
+    ierr = nf_put_att_text(ncid_ll, filter_radius_km_id, 'long_name', &
+        len('radius of influence for mpas_to_latlon smoothing filter'), &
+            'radius of influence for mpas_to_latlon smoothing filter')
     call handle_err(ierr)
     ierr = nf_put_att_text(ncid_ll, filter_radius_km_id, 'units',     len('km'),    'km')
     call handle_err(ierr)
@@ -347,7 +348,7 @@ program mpas_to_latlon
               ncount(3) = levels_id
               interp_var_nz(i) = nVertLevels
            else
-              write(0,*) ' input dimension '//TRIM(junkc)//' not vertical'
+              !write(0,*) ' input dimension '//TRIM(junkc)//' not vertical'
            end if
         end do
         if (ndims >= 3 .and. ncount(3) == -1) then
@@ -392,8 +393,9 @@ program mpas_to_latlon
     ierr = nf_put_att_text(ncid_ll, NF_GLOBAL, 'original_filename', len(trim(fname)), TRIM(fname))
     call handle_err(ierr)
     call date_and_time(DATE=now_date, TIME = now_time, ZONE = now_zone)
-    ierr = nf_put_att_text(ncid_ll, NF_GLOBAL, 'run_date_and_time', len('mpas_to_latlon: '//now_date//' '//now_time//' '//now_zone), &
-                                                                        'mpas_to_latlon: '//now_date//' '//now_time//' '//now_zone)
+    ierr = nf_put_att_text(ncid_ll, NF_GLOBAL, 'run_date_and_time', &
+        len('mpas_to_latlon: '//now_date//' '//now_time//' '//now_zone), &
+            'mpas_to_latlon: '//now_date//' '//now_time//' '//now_zone)
     call handle_err(ierr)
 
     ! Copy global attributes to output file
@@ -582,11 +584,11 @@ program mpas_to_latlon
     !write(0,'(A)')'put lat_ll_v'
     ierr = nf_put_var_double(ncid_ll, lon_ll_v_id, lon_ll(1,:)*RadiansToDegrees )
     call handle_err(ierr)
-    ierr = nf_put_var_double(ncid_ll, grid_spacing_id, grid_spacing)
-    call handle_err(ierr)
-    ierr = nf_put_var_double(ncid_ll, filter_radius_km_id, filter_radius_km)
+    ierr = nf_put_var_double(ncid_ll, grid_spacing_id, [grid_spacing])
     call handle_err(ierr)
     !write(0,'(A,F5.1)')'put filter_radius_km ', filter_radius_km
+    ierr = nf_put_var_double(ncid_ll, filter_radius_km_id, [filter_radius_km])
+    call handle_err(ierr)
  
     ! for each variable - read, interp, and write
     do i=1,nvars
@@ -598,10 +600,10 @@ program mpas_to_latlon
         ierr = nf_inq_var(ncid, var_input_id(i), junkc, xtype, ndims, dimids, natts)
         call handle_err(ierr)
   
-        write(0,*) '1 nlon=',nlon,' nlat=',nlat,' ncid=',ncid,' var_input_id(i)=',var_input_id(i)
+        !write(0,*) TRIM(junkc)//' nlon=',nlon,' nlat=',nlat,' ncid=',ncid,' var_input_id(i)=',var_input_id(i)
         ierr = nf_inq_vardimid(ncid, var_input_id(i), dimids)
         call handle_err(ierr)
-        write(0,*) '2 dimids=',dimids(1:5), ' nVertices_id=',nVertices_id,' nlon=',nlon,' nlat=',nlat, ierr
+        !write(0,*) 'dimids=',dimids(1:5), ' nVertices_id=',nVertices_id, ' ierr=', ierr
         if (dimids(1) .eq. nVertices_id) then 
             write(0,*) trim(interp_var_output(i))//' is a vertex variable with ',nVertices,'vertices'
             allocate(input_var_vertices(nVertLevels,nVertices))
@@ -615,12 +617,13 @@ program mpas_to_latlon
 
             ! INPUT: input_var_vertices OUTPUT: input_var (on cells)
             write(0,*)'calling mpas_vort_cell1'
-            call mpas_vort_cell1(nEdgesOnCell, verticesOnCell, maxEdges, nVertLevels, nCells, nVertices, input_var_vertices, input_var)
+            call mpas_vort_cell1(nEdgesOnCell, verticesOnCell, maxEdges, nVertLevels,&
+                                 nCells, nVertices, input_var_vertices, input_var)
 
 
             deallocate(input_var_vertices)
         else
-            write(0,*) 'not a vertex variable'
+            !write(0,*) TRIM(junkc)//' not a vertex variable'
             ierr = nf_get_var_double( ncid,var_input_id(i),input_var)
             call handle_err(ierr)
         end if
@@ -628,9 +631,12 @@ program mpas_to_latlon
         ! Filter is based on mpas_filter_cells.f, but the number of
         ! smoothing passes is inversely proportional to sqrt(areaCell)
         ! filter_radius_km is in km.
-        !write(0,*)'calling mpas_filter_cells_by_area. nEdgesOnCell(1)=',nEdgesOnCell(1), 'cellsOnCell(:,1)=',cellsOnCell(:,1),'maxEdges=',maxEdges,'nCells=',nCells
-        !write(0,*)' areaCell(1)=',areaCell(1), ' filter_radius_km=', filter_radius_km
-        call mpas_filter_cells_by_area(nEdgesOnCell, cellsOnCell, areaCell, maxEdges, nVertLevels, nCells, input_var, filter_radius_km)
+        !write(0,*)'call mpas_filter_cells_by_area. nEdgesOnCell(1)=',nEdgesOnCell(1)
+        !write(0,*)'cellsOnCell(:,1)=',cellsOnCell(:,1),'maxEdges=',maxEdges,'nCells=',nCells
+        !write(0,*)' areaCell shape=', shape(areaCell), ' areaCell(1)=',areaCell(1), ' filter_radius_km=', filter_radius_km
+        !write(0,*)' nVertLevels=',nVertLevels, ' input_var shape=', shape(input_var)
+        call mpas_filter_cells_by_area(nEdgesOnCell, cellsOnCell, areaCell, maxEdges, &
+                                       nVertLevels, nCells, input_var, filter_radius_km)
         !write(0,*)'after mpas_filter_cells_by_area: minval(cellsOnCell)=',minval(cellsOnCell)
         !write(0,*)'after mpas_filter_cells_by_area: maxval(cellsOnCell)=',maxval(cellsOnCell)
 
@@ -648,7 +654,8 @@ program mpas_to_latlon
         ierr = nf_put_var_double(ncid_ll, var_output_id(i), output_var_cf )
         call handle_err(ierr)
    
-        write(0,'(A,2E15.6,A,A)') '  mpas_to_latlon: max/min',maxval(output_var_cf), minval(output_var_cf), ' for ',interp_var_output(i)
+        write(0,'(A,2E15.6,A,A)') '  mpas_to_latlon: max/min', &
+            maxval(output_var_cf), minval(output_var_cf), ' for ',interp_var_output(i)
 
         deallocate(input_var)
         deallocate(output_var)
@@ -1000,7 +1007,8 @@ contains
 
        write(0,*) '"'//ccyy_mm_dd_hh_mm_ss//'"'
        read(ccyy_mm_dd_hh_mm_ss,'(I4,1x,I2,1x,I2,1x, I2,1x,I2,1x,I2)') iyear, imonth, iday, ihr, imin, isec
-       write(0,*) 'iyear=',iyear,'imonth=',imonth,'iday=',iday,'ihr=',ihr,'imin=',imin,'isec=',isec
+       write(0,'(A,I4,A,I2,A,I2,A,I2,A,I2,A,I2)') ' iyear=', iyear,' imonth=', imonth, &
+                                                  ' iday=', iday,' ihr=',ihr, ' imin=',imin, ' isec=',isec
 
        a = datetime(iyear,imonth,iday,ihr,imin)
        b = datetime(1970,1,1,0,0)
@@ -1073,7 +1081,8 @@ contains
      ENDIF
      END SUBROUTINE HANDLE_ERR
  
-     subroutine mpas_filter_cells_by_area( nEdgesOnCell, cellsOnCell,areaCell, maxEdges, nVertLevels, nCells, field, radius_km )
+     subroutine mpas_filter_cells_by_area(nEdgesOnCell, cellsOnCell, areaCell, maxEdges,&
+                                          nVertLevels, nCells, fieldc, filter_radius_km )
 
       implicit none
 
@@ -1082,20 +1091,22 @@ contains
       integer, INTENT(IN) :: maxEdges,nCells, nVertLevels
       integer, INTENT(IN) :: nEdgesOnCell(nCells)
       integer, INTENT(IN) :: cellsOnCell(maxEdges,nCells)
-      double precision, INTENT(IN) :: areaCell(nCells)
-      real*8, INTENT(INOUT) ::  field(nVertLevels,nCells)
-      real, INTENT(IN)      :: radius_km
+      !double precision, INTENT(IN) :: areaCell(nCells)
+      real*8, INTENT(IN)    :: areaCell(nCells)
+      real*8, INTENT(INOUT) :: fieldc(nVertLevels,nCells)
+      real*8, INTENT(IN)    :: filter_radius_km
 
       !  local
       
-      integer fpass,i,j, k
-      integer fpasses(nCells)
-      real pi
+      integer :: fpass,i,j, k
+      integer :: fpasses(nCells)
+      real :: pi
       parameter (pi=3.141592)
       integer nnbr   ! neighbor count
-      real*8 nbr_tot ! sum of neighbor values
+      integer :: max_fpasses 
+      real*8, dimension(nVertLevels) :: nbr_tot ! sum of neighbor values
       ! tmp = holds new cell values for each smoothing pass
-      real*8  tmp(nVertLevels,nCells)
+      real*8, dimension(nVertLevels,nCells) :: tmp
 
       ! The number of smoothing passes varies for each cell.
       ! It is inversely proportional to the radius of each cell
@@ -1110,7 +1121,6 @@ contains
       ! require.
       !write(0,*)'Entered mpas_filter_by_area'
 
-
       ! From Apr 1, 2020 email from Michael Duda (via Wei Wang)
       ! The valid cellsOnCell indices are still 1-based; however,
       ! invalid cellsOnCell entries (i.e., those entries beyond
@@ -1124,49 +1134,37 @@ contains
       ! numbers. I don't know what problem this sanity check was trying
       ! to avoid, but I can't use it anymore. 
       if(maxval(cellsOnCell).gt.nCells.or.minval(cellsOnCell).lt.0) then
-        write(0,*)'cellsOnCell(j,i)=',cellsOnCell(j,i)
-        write(0,*)'but must be between 1 and ',nCells
-        write(0,*)'minval(cellsOnCell)=',minval(cellsOnCell)
-        write(0,*)'maxval(cellsOnCell)=',maxval(cellsOnCell)
-        write(0,*)'stopping'
-        stop
+          write(0,*)'cellsOnCell must be between 1 and ',nCells
+          write(0,*)'minval(cellsOnCell)=',minval(cellsOnCell)
+          write(0,*)'maxval(cellsOnCell)=',maxval(cellsOnCell)
+          write(0,*)'stopping'
+          stop
       endif
 
+      max_fpasses = 0
       do i=1,nCells
-        fpasses(i) = radius_km/sqrt(1e-6*areaCell(i)/pi)
+          fpasses(i) = int(filter_radius_km/sqrt(1e-6*areaCell(i)/pi))
+          if (fpasses(i) > max_fpasses) then
+               max_fpasses = fpasses(i)
+          end if
       end do
-      !write(0,*)'mpas_filter_by_area: calculated fpasses'
+      !write(0,*)'mpas_filter_by_area: calculated fpasses. max ', max_fpasses
 
-      do fpass = 1, maxval(fpasses)
-        ! Each smoothing pass is conservative.
-        do k=1,nVertLevels
-
-           do i=1,nCells
-             tmp(k,i) = field(k,i)
-             ! Smooth cell if fpass <= fpasses(i)
-             ! Average it with neighbors that are also
-             ! under fpass threshold.
-             if(fpass <= fpasses(i))then
-               nnbr = 0
-               nbr_tot = 0.
-               ! Average neighbors
-               do j=1,nEdgesOnCell(i)
-                ! is neighbor <= fpass threshold?
-                if(fpass <= fpasses(cellsOnCell(j,i)))then
-                  nnbr = nnbr + 1 ! increment neighbor count
-                  nbr_tot = nbr_tot + field(k,cellsOnCell(j,i))
-                endif
-               end do
-               ! Smoothed value is average of old value and 
-               ! average of neighbors under fpass threshold.
-               if(nnbr.gt.0) tmp(k,i)=0.5*(tmp(k,i) + nbr_tot/nnbr)
-             endif
-           end do !nCells
-
-           do i=1,nCells
-             field(k,i) = tmp(k,i)
-           end do !nCells
-        end do ! nVertLevels
+      do fpass = 1, max_fpasses
+          ! Each smoothing pass is conservative.
+          ! write(0,*) 'pass ', fpass
+          tmp(:,:) = fieldc(:,:)
+          do i=1,nCells
+              ! Smooth cell if fpass <= fpasses(i)
+              if (fpass > fpasses(i)) continue
+              ! Average neighbors
+              nnbr = nEdgesOnCell(i)
+              nbr_tot = SUM(fieldc(:,cellsOnCell(1:nnbr,i)), 2)
+              ! Smoothed value is half old value and half average of neighbors
+              tmp(:,i)=0.5*(tmp(:,i) + nbr_tot/nnbr)
+          end do !nCells
+ 
+          fieldc(:,:) = tmp(:,:)
       end do ! fpass
       return
       end subroutine mpas_filter_cells_by_area
