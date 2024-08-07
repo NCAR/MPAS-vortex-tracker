@@ -42,8 +42,8 @@ if ($?fiorino) then
 else
 	set tcv=combined_tcvitals.$yyyy.dat
 	# -N retrieve new file if local file is older
-	lwp-download http://hurricanes.ral.ucar.edu/repository/data/tcvitals_open/$tcv $tmpfile
-	if ($status != 0) lwp-download http://hurricanes.ral.ucar.edu/repository/data/tcvitals_open/$yyyy/$tcv $tmpfile
+	wget http://hurricanes.ral.ucar.edu/repository/data/tcvitals_open/$tcv --output-file=$tmpfile
+	if ($status != 0) wget http://hurricanes.ral.ucar.edu/repository/data/tcvitals_open/$yyyy/$tcv --output-file $tmpfile
 	# Extract the date and hour that match the current init time
 	grep "$ymd ${h}00 " $tmpfile | tee $out
 endif

@@ -5,34 +5,25 @@
 # mpas_to_latlon was wired to derive height of model surfaces and vorticity but I commented it out. 
 # now it just processes the fields in the standard input list.
 
-# Used to break into mpas/mpas2 and 08/16 (4 parts) and run in parallel.
-# But now that I added a lock file, just start the whole thing many times.
-# The program will skip over completed times and partially-completed times.
-
 # Used to find vortices, but commented this out. Now tracking is done by GFDL vortex tracker and
 # handled by mpas_ll_GRIB1.csh. 
 
 module load nco
-umask 002
 
 set debug=0
 set delta=0.5
-set lat0=-30
-set lat1=60
+set lat0=-5
+set lat1=50
 set lon0=0
 set filter_radius_km=25
-set EXECUTABLE=/glade/scratch/ahijevyc/MPAS-vortex-tracker/bin/mpas_to_latlon
+set EXECUTABLE=$SCRATCH/MPAS-vortex-tracker/bin/mpas_to_latlon
 
-set current_date=`date -u +%Y%m%d`00
-set ymdh=$current_date
-set meshid=mpas_conv
-set fields_to_interpolate=/glade/scratch/ahijevyc/MPAS-vortex-tracker/scripts/mpas_fields_to_interpolate.txt
-set workdir=/glade/scratch/$user
+set meshid=tk707_conus
+set fields_to_interpolate=$SCRATCH/MPAS-vortex-tracker/scripts/mpas_fields_to_interpolate.txt
+set idir=/glade/campaign/mmm/wmr/weiwang/cps/irma3/2020/tk707_conus
+set workdir=$TMPDIR
 
 while ("$1" != "")
-    # Used to expect plain date directories.
-	# Now you can append a subdirectory like ymdh=2015093000/ec or 2016092300/test
-	if ("$1" =~ 20[0-9][0-9][01][0-9][0-3][0-9][01][02]*) set ymdh="$1" # added possibility of 12UTC 
 	if ("$1" == "-d") then 
 		set debug=1
 	endif
@@ -70,6 +61,10 @@ while ("$1" != "")
 		shift
 		set meshid="$1"
 	endif
+	if ("$1" == "-i") then # optional argument -i determines input directory.
+		shift
+		set idir="$1"
+	endif
 	if ("$1" == "-w") then # optional argument -w determines working directory.
 		shift
 		set workdir="$1"
@@ -87,17 +82,6 @@ if (! -s $fields_to_interpolate) then
     exit 2
 endif
 
-set d=$workdir/$meshid/$ymdh
-if (! -d $d) then
-    echo "Did not find $d. Are working directory, mesh id, and initialization time correct?"
-    echo "\tworking directory   $workdir"
-    echo "\tmesh id             $meshid"
-    echo "\tinitialization time $ymdh"
-    exit 2
-endif
-
-cd $d
-
 uname -n
 if ( $debug ) then
     uname -a
@@ -105,16 +89,6 @@ if ( $debug ) then
     set echo
 endif
 
-# check file existence. This file is dumped out after the last ncl job
-# is finished.'
-waitfile0:
-set check_file=log.0000.out
-# If running on the current date, wait until check_file is there. 
-if ($ymdh =~ $current_date && ! -s $check_file) then
-	echo in $d MPAS not finished. will try again in 10 minutes.
-	sleep 600
-	goto waitfile0
-endif 
 
 # Normally date directories have 3-hourly files, but some have hourly. 
 # capture 6-hour multiples, but not 3-hour. Nov 20 2014
@@ -122,32 +96,22 @@ endif
 # For debugging sometimes Wei names them 'diag' instead of 'diagnostics'
 # Don't zero pad. Let printf %02d do that. Otherwise it will consider it octal.
 set dxdetails=`printf '_%5.3fdeg_%03dkm' ${delta} ${filter_radius_km}`
-set odir=latlon$dxdetails
+set odir=$workdir/$meshid/latlon$dxdetails
 mkdir -p $odir/gfdl_tracker
 if ($status != 0) then
     echo problem making output directory $odir/gfdl_tracker
     exit 2
 endif
-foreach f (diag*.20??-??-??_0[06].00.00.nc diag*.20??-??-??_1[28].00.00.nc )
-    set ofile=$odir/$f
+foreach f ($idir/diag*.20??-??-??_0[06].00.00.nc $idir/diag*.20??-??-??_1[28].00.00.nc )
+    set ofile=$odir/`basename $f`
     # Only do this file if it doesn't exist already. or if $f is newer than $ofile.
     # `ls -t1 $f $ofile` lists files one on each line with newest first
     if (! -e $ofile || `ls -1t $f $ofile|head -n 1` == $f ) then
-        set lock = $odir/.$f
-        if (-e $lock) then
-            echo found lock file $lock  moving on.
-            continue
-        endif
-        touch $lock
-
-        # limit vertical levels to these essential levels so mpas_to_latlon doesn't take so long.
-        ncrename -d .nIsoLevelsU,u_iso_levels -d nIsoLevelsT,t_iso_levels -d nIsoLevelsZ,z_iso_levels -O $f $lock
-        ncks -d t_iso_levels,30000.,50000. -d z_iso_levels,20000.,90000. -O $lock $lock
 
         set args = (`printf '%s %5.3f %02d %s %4.1f %4.1f %6.1f' $ofile $delta $filter_radius_km $meshid $lat0 $lat1 $lon0`)
         # Stored list of fields to interpolate in file. Oct 6, 2017. 
-        echo "grep -v '#' $fields_to_interpolate | $EXECUTABLE $lock $args"
-        grep -v '#' $fields_to_interpolate | $EXECUTABLE $lock $args
+        echo "grep -v '#' $fields_to_interpolate | $EXECUTABLE $f $args"
+        grep -v '#' $fields_to_interpolate | $EXECUTABLE $f $args
 
         if ($status == 2) then
             shift args # get rid of 1st element and move remaining down by 1
@@ -161,15 +125,11 @@ foreach f (diag*.20??-??-??_0[06].00.00.nc diag*.20??-??-??_1[28].00.00.nc )
         endif
 
         # Append vertical coordinates to output file.
-        # Don't append from original file $f because it will have all the vertical levels, not the filtered ones
-        # filtered by the ncrename/ncks commands above. 
         foreach v (t z u)
             ncdump -h $f | grep ${v}_iso_levels >& /dev/null
-            if ($status == 0) ncks -A -v ${v}_iso_levels $lock $ofile
+            if ($status == 0) ncks -A -v ${v}_iso_levels $f $ofile
         end
 
-
-        rm $lock
     endif
 end # diagnostics file
 

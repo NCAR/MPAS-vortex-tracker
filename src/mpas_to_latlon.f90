@@ -471,7 +471,7 @@ program mpas_to_latlon
         if (ierr.ne.NF_NOERR) then
             write(0,*) ' err for maxedges id ', NF_STRERROR(ierr)
             write(0,*) ' process init.nc first, so maxEdges and nEdges are defined in save file'
-            call exit(2)
+            call exit(2) ! run_mpas_to_latlon.csh uses return status=2 to give good error msg.
         end if
 
         ierr = nf_inq_dim(ncid, maxedges_id, junkc, maxedges)

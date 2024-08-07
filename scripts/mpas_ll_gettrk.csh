@@ -4,49 +4,44 @@
 # remember to interpolate to lat/lon with run_mpas_to_latlon.csh first
 
 # usage
-# mpas_ll_gettrk.csh [yyyymmddhh] [-w model] [-t (tracker|tcgen)] [-d] [-i workdir_parent] [--justplot]
+# mpas_ll_gettrk.csh [-w model] [-t (tracker|tcgen)] [-d] [-i workdir_parent] [--justplot]
 
 module load cdo
 module load nco
-module load python # for forecast_hour_links.py 
-module load ncarenv # for ncar_pylib
+#module load python # for forecast_hour_links.py 
+#module load ncarenv # for ncar_pylib
 
-printenv NCAR_HOST
-if ( $NCAR_HOST =~ cheyenne* ) then
-    set BINDIR = /glade/u/home/ahijevyc/bin_cheyenne
-    ncar_pylib /glade/work/ahijevyc/20201220_cheyenne_daa # for cartopy and atcf modules used in plot_atcf.py as user other than ahijevyc, like mpasrt
-endif 
-if ( $NCAR_HOST =~ dav ) then
-    set BINDIR = /glade/u/home/ahijevyc/bin_dav
-    ncar_pylib /glade/work/ahijevyc/20201220_daa_casper # for cartopy and atcf modules used in plot_atcf.py as user other than ahijevyc, like mpasrt
-endif 
+#printenv NCAR_HOST
+#if ( $NCAR_HOST =~ cheyenne* ) then
+#    set BINDIR = /glade/u/home/ahijevyc/bin_cheyenne
+#    ncar_pylib /glade/work/ahijevyc/20201220_cheyenne_daa # for cartopy and atcf modules used in plot_atcf.py as user other than ahijevyc, like mpasrt
+#endif 
+#if ( $NCAR_HOST =~ dav ) then
+#    set BINDIR = /glade/u/home/ahijevyc/bin_dav
+#    ncar_pylib /glade/work/ahijevyc/20201220_daa_casper # for cartopy and atcf modules used in plot_atcf.py as user other than ahijevyc, like mpasrt
+#endif 
 
 
-setenv BINDIR /glade/scratch/$USER/standalone_gfdl-vortextracker_v3.9a/trk_exec
-setenv EXEDIR /glade/scratch/$USER/MPAS-vortex-tracker
+setenv BINDIR $SCRATCH/standalone_gfdl-vortextracker_v3.9a/trk_exec
+setenv EXEDIR $SCRATCH/MPAS-vortex-tracker
 
 
 # set defaults
-set dxdetails=_0.500deg_025km
 set debug=0
-set idir=/glade/scratch/mpasrt
+set dxdetails=_0.500deg_025km
 set justplot=0
-set trackertype=tcgen # tracker is traditional and only tracks stuff mentioned at t=0.  tcgen does genesis too
-set yyyymmddhh=`date -u +%Y%m%d`
+set meshid=tk707_conus
+set trackertype=tcgen # trackertype=tracker is traditional and only tracks stuff mentioned at t=0.  tcgen does genesis too
+set workdir=$TMPDIR
 
 while ("$1" != "")
-	if ("$1" =~ 20[0-9][0-9][01][0-9][0-3]*) set yyyymmddhh="$1"
 	if ("$1" == "--dx") then # optional argument --dx grid spacing and smoothing directory. 
 		shift
 		set dxdetails="$1"
 	endif
-	if ("$1" == "-i") then # optional argument -i determines parent working directory. 
+	if ("$1" == "--mesh") then 
 		shift
-		set idir="$1"
-	endif
-	if ("$1" == "-w") then # argument -w determines working directory under $idir. added this because the # of potential working directory patterns is getting out of hand.
-		shift
-		set mp="$1"
+		set meshid="$1"
 	endif
 	if ("$1" == "-t") then # optional argument -t can determine trackertype. (tracker or tcgen)
 		shift
@@ -54,6 +49,10 @@ while ("$1" != "")
 	endif
 	if ("$1" == "-d") set debug=1
 	if ("$1" == "--justplot") set justplot=1
+	if ("$1" == "-w") then # optional argument -w determines work directory. 
+		shift
+		set workdir="$1"
+	endif
 	shift
 end
 
@@ -64,31 +63,15 @@ if ("$1" != "") then
 	exit
 endif
 
-umask 002
-
-set workdir = $idir/$mp/$yyyymmddhh/latlon$dxdetails
+cd $workdir/$meshid/latlon$dxdetails
 if ($justplot) goto PLOT
 
-
-cd $workdir
 
 mkdir -p gfdl_tracker/$trackertype
 # used to use simple wildcard, but it matched hours between multiples of 3
 # Hourly files were present for random dates, like mpas3/2013092700.
-set if=0
 set fort15=gfdl_tracker/fort.15
-if (-e $fort15) rm $fort15
-foreach f (`ls diag.*$dxdetails.nc|sort` )
-
-    # Append line to fort.15 (index of file starting with "0001" and forecast lead time in minutes) 
-    # Used to be at end of foreach block but it needs to occur with every iteration of the diagnostics
-    # file loop, before any "continue" clause.
-    # Use forecast_hour_links.py to output the number of minutes. Allows missing diag files. 
-    set fmin=`$EXEDIR/scripts/forecast_hour_links.py -m $f`
-    printf '%04d %05d\n' `expr $if + 1` $fmin >> $fort15
-    @ if++
-
-end
+ls diag*.nc|python $EXEDIR/scripts/forecast_hour_links.py > $fort15
 
 # Enter directory for vortex tracker files
 cd gfdl_tracker
@@ -105,7 +88,7 @@ touch $lock
 
 # Concatenate forecast lead times into 1 file. Don't reuse the name all.nc or treat as temporary file.
 # Read later for mslp.
-if (! -s all.nc) ncrcat -O ../diag.*$dxdetails.nc all.nc
+ncrcat -O ../diag*.nc all.nc
 
 # Used to assume workdir contained a yyyymmddhh string and pull initdate from that. Now get initdate from earliest 
 # time in all.nc using ncdump. 
@@ -120,7 +103,8 @@ set dd=`date --date="$d" "+%d"`
 set h=`date --date="$d" "+%H"`
 set ymd=$bcc$byy$m$dd
 
-set out=diag.$mp.$ymd$h
+set out=diag.$meshid.$ymd$h
+
 if (! -s $out) then
     echo Making $out
     # separate levels
@@ -240,7 +224,7 @@ cat <<NL > namelist
         ikeflag='n'
 /
 &fnameinfo  gmodname='diag',
-        rundescr='$mp',
+        rundescr='$meshid',
         atcfdescr=''
 /
 &waitinfo use_waitfor='n'
@@ -329,5 +313,5 @@ set echo
 # TODO: allow cp basin. when I added cp to the basin list, it collapsed the global plot longitude range to zero.
 conda activate
 python ~ahijevyc/bin/plot_atcf.py $workdir/gfdl_tracker/$trackertype/$atcf_with_warmcore_column --basins global al wp ep io \
-    --project $mp --origmesh --diagdir $idir/$mp/$yyyymmddhh --initfile $idir/$mp/$yyyymmddhh/init.nc --force_new $toserver
+    --project $meshid --origmesh --diagdir $idir/$meshid --initfile $idir/$meshid/init.nc --force_new $toserver
 

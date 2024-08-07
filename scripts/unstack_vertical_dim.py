@@ -34,7 +34,12 @@ if os.path.exists(ofile) and not clobber:
 
 
 ds = xarray.open_dataset(ifile)
-ds = ds.swap_dims(dict(nIsoLevelsT="t_iso_levels",nIsoLevelsZ="z_iso_levels"))
+ds = ds.swap_dims(dict(
+    nIsoLevelsT="t_iso_levels",
+    nIsoLevelsZ="z_iso_levels",
+    nIsoLevelsU="u_iso_levels",
+    )
+                  )
 
 for level in ds.z_iso_levels:
     ilevel = str(int(level/100))
