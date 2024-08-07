@@ -6,22 +6,6 @@
 # usage
 # mpas_ll_gettrk.csh [-w model] [-t (tracker|tcgen)] [-d] [-i workdir_parent] [--justplot]
 
-module load cdo
-module load nco
-#module load python # for forecast_hour_links.py 
-#module load ncarenv # for ncar_pylib
-
-#printenv NCAR_HOST
-#if ( $NCAR_HOST =~ cheyenne* ) then
-#    set BINDIR = /glade/u/home/ahijevyc/bin_cheyenne
-#    ncar_pylib /glade/work/ahijevyc/20201220_cheyenne_daa # for cartopy and atcf modules used in plot_atcf.py as user other than ahijevyc, like mpasrt
-#endif 
-#if ( $NCAR_HOST =~ dav ) then
-#    set BINDIR = /glade/u/home/ahijevyc/bin_dav
-#    ncar_pylib /glade/work/ahijevyc/20201220_daa_casper # for cartopy and atcf modules used in plot_atcf.py as user other than ahijevyc, like mpasrt
-#endif 
-
-
 setenv BINDIR $SCRATCH/standalone_gfdl-vortextracker_v3.9a/trk_exec
 setenv EXEDIR $SCRATCH/MPAS-vortex-tracker
 
