@@ -81,7 +81,7 @@ cd gfdl_tracker
 # Don't want more than 1 tracker running in the same directory.
 set lock=.mpas_ll_gettrk.lock
 if (-e $lock) then
-    echo found lock file $lock in `pwd` 
+    echo found lock file `pwd`/$lock
     exit 1
 endif
 touch $lock
@@ -107,58 +107,10 @@ set out=diag.$meshid.$ymd$h
 
 if (! -s $out) then
     echo Making $out
-    # separate levels
+    # separate variables with a vertical dimension into multiple variables named by level.
     python $EXEDIR/scripts/unstack_vertical_dim.py all.nc --ofile tmp.nc --clobber
-    # Tracker program gettrk_main.f v3.9a can't handle variables with a vertical dimension.
-    # It assumes a variable has only one pressure level.
-    # delete unneeded variables.
-    ncks -O -C -x -v z_isobaric,z_iso_levels,temperaure_200hPa tmp.nc tmp2.nc
-    mv tmp2.nc tmp.nc
 
-    # Instead of using meanT_500_300 from MPAS diagnostics just average the 5 levels with ncwa.
-    # That is actually what hwrf_tave.exe does. (none of the dp-weighting used in MPAS diagnostics).
-    # Extract 3-D temperature and 1-D pressure coordinate variable - makes ncrename and ncwa run faster
-    ncks -v t_isobaric,t_iso_levels tmp.nc t_isobaric.nc
-    # Use ncwa to average between 30000 Pa and 50000 Pa. Use decimal point so it knows they are real values not index values. 
-    ncwa -a t_iso_levels -d t_iso_levels,30000.,50000. -O t_isobaric.nc tmean.nc
-    # Change name of t_isobaric variable to tmean
-    ncrename -v t_isobaric,tmean -O tmean.nc
-    ncks -A -v tmean tmean.nc tmp.nc
-    rm t_isobaric.nc tmean.nc
-
-    # Define vertical level type of MSLP and convert from hPa to Pa (x100)
-    # To see if it is needed, ncdump variable 'mslp' and look for numbers starting 
-    # with 10 or 9 followed by 2 digits, then a decimal,
-    # then another digit.  This matches pressure in hPa in mslp dump. Pressure
-    # in Pa should not match. 2013 diagnostics mslp output was in hPa; 2014 in Pa.
-    ncdump -v mslp ../diag*.${initdate}_${h}.00.00.nc | tail | grep -P " (10|9)\d\d\.\d"
-    if ($status == 0) then
-        ncap2 -O -s 'mslp=100.*mslp;' all.nc mslp.nc
-        ncks -A mslp.nc tmp.nc
-        rm mslp.nc
-    endif
-
-    # Set reference time of relative time axis and set base units to hours.
-    cdo -O -setreftime,$initdate,${h}:00:00,1hour tmp.nc tmp2.nc
-
-    # Bypass longitude problem by outputting 0-360 with mpas_to_latlon. - Jan 2019
-    # gettrk handles flipped latitude now. 
-    # This is a mystery. If I shift the order of the variables in memory from 
-    # -180-180 to 0-360, I don't need to flip latitude. 
-    # I fiddled with this to get atcf output with 'W' and 'E' values, not just 'E'. 
-    # Before it was outputting just 'E' values and negative values. Not good. 
-    # TODO: output latlon files with 0-360 longitude from mpas_to_latlon (avoid this step)
-    #ncks -O --msa -d lon,0.,180. -d lon,-180.,-0.25 tmp2.nc tmp.nc # TODO: avoid hard-coded -0.25
-    #ncap2 -O -s 'where(lon < 0) lon=lon+360' tmp.nc tmp2.nc
-    # Flip latitude dimension.
-    # cdo invertlat corrupts t_iso_levels for some reason
-    # cdo -O invertlat tmp2.nc tmp.nc
-    # Don't need to flip latitude dimension. gettrk seems to handle it. min and max lat are okay, etc...
-    # actually I did need to flip latitude for v3.9a. 
-    #ncpdq -O -a -lat tmp2.nc tmp.nc
-
-    mv tmp2.nc $out
-    rm tmp.nc
+    mv tmp.nc $out
     if (! $debug) rm -v all.nc
 endif
 
@@ -283,7 +235,6 @@ NL
 
 printf "Running tracker..."
 $BINDIR/gettrk.exe < namelist > log
-echo done
 if ($status != 0) then
     tail log
     exit 1
@@ -311,7 +262,6 @@ endif
 if ($user != ahijevyc) echo only user ahijevyc can rsync to server
 set echo
 # TODO: allow cp basin. when I added cp to the basin list, it collapsed the global plot longitude range to zero.
-conda activate
-python ~ahijevyc/bin/plot_atcf.py $workdir/gfdl_tracker/$trackertype/$atcf_with_warmcore_column --basins global al wp ep io \
-    --project $meshid --origmesh --diagdir $idir/$meshid --initfile $idir/$meshid/init.nc --force_new $toserver
+python ~ahijevyc/bin/plot_atcf.py $atcf_with_warmcore_column --basins global al wp ep io \
+    --project $meshid --origmesh --diagdir ../ --initfile $meshid/init.nc --force_new $toserver
 
