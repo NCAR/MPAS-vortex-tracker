@@ -189,18 +189,18 @@ def main(args):
                 linewidth=linewidth,
                 linestyle=linestyle,
                 )
-
-    idf = bestTrack(df)
-    plot_track(
-                ax,
-                "",
-                idf, 
-                "",
-                label_interval_hours=24,
-                linewidth = 4,
-                linestyle = "solid",
-                scale=2,
-            )
+    if False:
+        idf = bestTrack(df)
+        plot_track(
+                    ax,
+                    "",
+                    idf, 
+                    "",
+                    label_interval_hours=24,
+                    linewidth = 4,
+                    linestyle = "solid",
+                    scale=2,
+                )
 
 
     # Set title

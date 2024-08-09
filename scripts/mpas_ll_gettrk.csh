@@ -6,7 +6,10 @@
 # usage
 # mpas_ll_gettrk.csh [-w model] [-t (tracker|tcgen)] [-d] [-i workdir_parent] [--justplot]
 
-setenv BINDIR $SCRATCH/standalone_gfdl-vortextracker_v3.9a/trk_exec
+module load conda
+conda activate npl-2024b
+module load nco
+setenv BINDIR $SCRATCH/standalone_gfdl-vortextracker/trk_exec
 setenv EXEDIR $SCRATCH/MPAS-vortex-tracker
 
 
@@ -47,6 +50,11 @@ if ("$1" != "") then
 	exit
 endif
 
+# make north and south boundaries just inside boundaries of diag.latlon files.
+source ./bounds.csh
+set northbd=`echo "$latmax - 5"|bc`
+set southbd=`echo "$latmin + 5"|bc`
+
 cd $workdir/$meshid/latlon$dxdetails
 if ($justplot) goto PLOT
 
@@ -61,14 +69,6 @@ ls diag*.nc|python $EXEDIR/scripts/forecast_hour_links.py > $fort15
 cd gfdl_tracker
 
 
-# put lock file in working directory of tracker. 
-# Don't want more than 1 tracker running in the same directory.
-set lock=.mpas_ll_gettrk.lock
-if (-e $lock) then
-    echo found lock file `pwd`/$lock
-    exit 1
-endif
-touch $lock
 
 # Concatenate forecast lead times into 1 file. Don't reuse the name all.nc or treat as temporary file.
 # Read later for mslp.
@@ -87,14 +87,12 @@ set dd=`date --date="$d" "+%d"`
 set h=`date --date="$d" "+%H"`
 set ymd=$bcc$byy$m$dd
 
-set out=diag.$meshid.$ymd$h
+set out=diag.$meshid.$ymd$h.nc
 
 if (! -s $out) then
     echo Making $out
     # separate variables with a vertical dimension into multiple variables named by level.
-    python $EXEDIR/scripts/unstack_vertical_dim.py all.nc --ofile tmp.nc --clobber
-
-    mv tmp.nc $out
+    python $EXEDIR/scripts/unstack_vertical_dim.py all.nc --ofile $out --clobber
     if (! $debug) rm -v all.nc
 endif
 
@@ -111,8 +109,6 @@ $EXEDIR/scripts/wget_tcvitals.csh $ymd $h $tcvitalsfile
 if($trackertype == 'tracker' && ! -s $tcvitalsfile )then
     echo "No storms at initial time $ymd$h. Exiting $0." > no_tracker_storms
     cp no_tracker_storms $trackertype
-    echo removing $lock from $workdir
-    rm $lock
     continue
 endif  
 
@@ -137,8 +133,8 @@ cat <<NL > namelist
 /
 &trackerinfo trkrinfo%westbd=0,
   trkrinfo%eastbd=360,
-  trkrinfo%northbd=50,
-  trkrinfo%southbd=-5,
+  trkrinfo%northbd=$northbd,
+  trkrinfo%southbd=$southbd,
   trkrinfo%type='$trackertype',
   trkrinfo%mslpthresh=0.0015,
   trkrinfo%use_backup_mslp_grad_check='y',
@@ -213,11 +209,12 @@ cat <<NL > namelist
   user_wants_to_track_thick200850='y'
 /
 &verbose
-verb=2
+verb=1
 /
 NL
 
-printf "Running tracker..."
+echo "Running tracker..."
+echo $BINDIR/gettrk.exe \< namelist \> log
 $BINDIR/gettrk.exe < namelist > log
 if ($status != 0) then
     tail log
@@ -226,26 +223,17 @@ endif
 
 cp fort.15 fort.61 fort.62 fort.64 fort.68 fort.69 namelist log $tcvitalsfile $trackertype
 if($trackertype == 'tcgen') mv fort.66 fort.67 fort.77 $trackertype
-echo removing lock file $lock
-rm $lock
 
 # jump here if --justplot option 
 PLOT:
 # Between tracker and tcgen, we prefer tcgen online.
 set atcf_with_warmcore_column=fort.64
-set toserver=""
-if($trackertype == 'tcgen') then
-    set atcf_with_warmcore_column=fort.66
-    set toserver="--to_server"
-endif
 
 # Read tracks and plot with script
 # -f force overwrite 
-# plot_atcf.py --to_server rsyncs to web server
 # The 1st basin sets the lat/lon grid tick interval for all basins.
-if ($user != ahijevyc) echo only user ahijevyc can rsync to server
 set echo
 # TODO: allow cp basin. when I added cp to the basin list, it collapsed the global plot longitude range to zero.
-python ~ahijevyc/bin/plot_atcf.py $atcf_with_warmcore_column --basins global al wp ep io \
-    --project $meshid --origmesh --diagdir ../ --initfile $meshid/init.nc --force_new $toserver
+python ~ahijevyc/bin/plot_atcf.py $atcf_with_warmcore_column --basin global al wp ep io \
+    --origmesh --diagdir ../ --initfile $meshid/init.nc --force_new 
 

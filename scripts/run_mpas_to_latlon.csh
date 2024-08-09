@@ -12,8 +12,8 @@ module load nco
 
 set debug=0
 set delta=0.5
-set lat0=-5
-set lat1=50
+set latmin=-5
+set latmax=55
 set lon0=0
 set filter_radius_km=25
 set EXECUTABLE=$SCRATCH/MPAS-vortex-tracker/bin/mpas_to_latlon
@@ -45,13 +45,13 @@ while ("$1" != "")
 		shift
 		set fields_to_interpolate="$1"
 	endif
-	if ("$1" == "--lat0") then # optional argument lat0 overrides default southern latitude
+	if ("$1" == "--latmin") then # optional argument latmin overrides default southern latitude
 		shift
-		set lat0="$1"
+		set latmin="$1"
 	endif
-	if ("$1" == "--lat1") then # optional argument lat1 overrides default northern latitude
+	if ("$1" == "--latmax") then # optional argument latmax overrides default northern latitude
 		shift
-		set lat1="$1"
+		set latmax="$1"
 	endif
 	if ("$1" == "--lon0") then # optional argument lon0 overrides default western longitude (gettrk likes 0)
 		shift
@@ -102,13 +102,18 @@ if ($status != 0) then
     echo problem making output directory $odir/gfdl_tracker
     exit 2
 endif
+# used by mpas_ll_gettrk.csh
+cat <<BOUNDS>bounds.csh
+setenv latmin $latmin
+setenv latmax $latmax
+BOUNDS
 foreach f ($idir/diag*.20??-??-??_0[06].00.00.nc $idir/diag*.20??-??-??_1[28].00.00.nc )
     set ofile=$odir/`basename $f`
     # Only do this file if it doesn't exist already. or if $f is newer than $ofile.
     # `ls -t1 $f $ofile` lists files one on each line with newest first
     if (! -e $ofile || `ls -1t $f $ofile|head -n 1` == $f ) then
 
-        set args = (`printf '%s %5.3f %02d %s %4.1f %4.1f %6.1f' $ofile $delta $filter_radius_km $meshid $lat0 $lat1 $lon0`)
+        set args = (`printf '%s %5.3f %02d %s %4.1f %4.1f %6.1f' $ofile $delta $filter_radius_km $meshid $latmin $latmax $lon0`)
         # Stored list of fields to interpolate in file. Oct 6, 2017. 
         echo "grep -v '#' $fields_to_interpolate | $EXECUTABLE $f $args"
         grep -v '#' $fields_to_interpolate | $EXECUTABLE $f $args
