@@ -154,8 +154,9 @@ As of version 3.9.1, the vortex tracker can process netCDF input.  Longitude mus
   
   - Fill namelist.
   
-  - Run tracker.
-  `$BINDIR/gettrk.exe < namelist > log`
+  - Run tracker that was compiled from [https://github.com/NCAR/MPAS-vortex-tracker.git](https://github.com/ahijevyc/standalone_gfdl-vortextracker.git)
+    
+  	`$BINDIR/gettrk.exe < namelist > log`
 
 # Run tracker on GFS - <a href="https://docs.google.com/document/d/1vgNUB4GW0FOgpD3tZUm8GQ2jV8ECW5SI7tfZVcX12UU/edit?usp=sharing">Google Doc</a>
 
