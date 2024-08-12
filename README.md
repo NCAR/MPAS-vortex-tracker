@@ -21,7 +21,7 @@ cd ..
 
 creates executable: `mpas_to_latlon` 
 
-If you have never interpolated a particular mesh before, `mpas_to_latlon` will first create a save file.  The save file will contain expensive triangulation information and a time variable. To create the save file, run `mpas_to_latlon` on a file that has the variables latCell, lonCell and xtime. init.nc is such a file. `mpas_to_latlon` will create the save file in the path defined in the environmental variable TMPDIR. Set the environmental variable `$TMPDIR` and make it with mkdir, if it doesn't exist already. Finally, execute `mpas_to_latlon`. Ask for a field that is in `init.nc`, like precipw. 
+If you have never interpolated a particular mesh before, `mpas_to_latlon` will first create a save file.  The save file will contain expensive triangulation information and a time variable. To create the save file, run `mpas_to_latlon` on a file that has the variables latCell, lonCell and xtime. init.nc is such a file. `mpas_to_latlon` will create the save file in the path defined in the environmental variable `TMPDIR`. Set the environmental variable `TMPDIR` and make it with mkdir, if it doesn't exist already. Finally, execute `mpas_to_latlon`. Ask for a field that is in `init.nc`, like `precipw`. 
 
 ```
 setenv TMPDIR /glade/scratch/$USER/temp
@@ -47,6 +47,8 @@ z_isobaric
 #### Usage
 `cat scripts/mpas_fields_to_interpolate.txt | grep -v # | bin/mpas_to_latlon fname outfile grid_spacing filter_radius_km meshid [lat0 [lat1 [startLon]]]`
 
+
+#### Defaults:
 ```
  fname            : input MPAS filename
  outfile          : output filename
@@ -61,7 +63,7 @@ z_isobaric
 #### Example:
 ```cat mpas_fields_to_interpolate.txt | mpas_to_latlon diagnostics.2013-09-01_00:00:00.nc latlon_0.500deg_25km/outfile.nc 0.5 25 mpas3 -5 50 0```
 
-This example interpolates the list of fields in mpas_fields_to_interpolate.txt to a 0.5 degree lat-lon grid after smoothing with a radius of influence of 25 km.  meshid is the arbitrary string label describing the MPAS mesh. Choosing a unique string can help distinguish different basins, even if the meshes have the same number of cells and the same lat-lon output parameters.  For example, I use 'wp' for the western Pacific mesh and 'ep' for the eastern Pacific mesh. In this example, the string description of the MPAS mesh is mpas3 and the latitude range is -5 to +50 N. The output file is called output.nc, but in practice, it is helpful to use a more descriptive name or subdirectory like latlon_0.500deg_25km/diag.2013-09-01_00:00:00.nc. Keep in mind, if the subdirectory does not exist already, or you don't have permission to write to the subdirectory, mpas_to_latlon will exit with an error.
+This example interpolates the list of fields in mpas_fields_to_interpolate.txt to a 0.5 degree lat-lon grid after smoothing with a radius of influence of 25 km.  meshid is the arbitrary string label describing the MPAS mesh. Choosing a unique string can help distinguish different basins, even if the meshes have the same number of cells and the same lat-lon output parameters.  For example, I use `wp` for the western Pacific mesh and `ep` for the eastern Pacific mesh. In this example, the string description of the MPAS mesh is mpas3 and the latitude range is -5 to +50 N. The output file is called output.nc, but in practice, it is helpful to use a more descriptive name or subdirectory like `latlon_0.500deg_25km/diag.2013-09-01_00:00:00.nc`. Keep in mind, if the subdirectory does not exist already, or you don't have permission to write to the subdirectory, mpas_to_latlon will exit with an error.
 
 Smoothing is performed iteratively on the native MPAS mesh.  During each pass the cells are averaged with all cell neighbors that share an edge.  Each cell is assigned a smoothing pass count (fpasses) that is inversely proportional to its radius. Small cells get averaged with their neighbors more times than large cells. This is like smoothing with a spatial filter of constant size. 
 
@@ -93,7 +95,7 @@ end do
 
 It's a linear interpolation from the mpas cell centers to the lat-lon grid cell centers. Delaunay triangulation is used to find the closest 3 mesh cell centers and obtain weights for the final interpolated values.  For vorticity, which is not defined on vertices, the interpolation is preceded by a step where the values on the cell vertices are averaged to get cell-centered values. Then the smoothing and interpolation proceed as normal. 
 
-A shell script scripts/run_mpas_to_latlon.csh runs mpas_to_latlon on all the diagnostic files for one model run. 
+A shell script `scripts/run_mpas_to_latlon.csh` runs `mpas_to_latlon` on all the diagnostic files for one model run. 
 
 #### Usage
 
@@ -120,7 +122,7 @@ This will Interpolate all `diag*.nc` files in `$TMPDIR/mpas15/` to a lat-lon gri
 
 ## Convert to format that vortex tracker can read
 
-As of version 3.9.1, the vortex tracker can process netCDF input.  Longitude must be 0-360, not -180 to +180 or else the longitude is output in atcf with the 'E' suffix, even with negative values. This is handled by the script `scripts/mpas_ll_gettrk.csh`.  The functions of `mpas_ll_gettrk.csh` are described below.
+As of version 3.9.1, the vortex tracker can process netCDF input.  Longitude must be 0-360, not -180 to +180 or else the longitude is output in atcf with the `E` suffix, even with negative values. This is handled by the script `scripts/mpas_ll_gettrk.csh`.  The functions of `mpas_ll_gettrk.csh` are described below.
 
 `mpas_ll_gettrk.csh`
 
@@ -137,7 +139,7 @@ As of version 3.9.1, the vortex tracker can process netCDF input.  Longitude mus
   - Unstack wind, height, and temperature variables. GFDL tracker doesn't expect variables with a vertical dimension.
   `python scripts/unstack_vertical_dim.py all.nc --ofile diag.$meshid.$ymd$h.nc --clobber`
   
-  - If you run the tracker in ‘tcgen’ (tropical cyclone genesis) mode, you can skip the rest of the section. Otherwise for ‘tracker’ mode, you need the initial storm positions in a file called tcvit_rsmc_storms.txt.  wget_tcvitals.csh will download TC vitals for the requested init time and put it in the aforementioned file.
+  - If you run the tracker in ‘tcgen’ (tropical cyclone genesis) mode, you can skip the rest of the section. Otherwise for ‘tracker’ mode, you need the initial storm positions in a file called `tcvit_rsmc_storms.txt`.  `wget_tcvitals.csh` will download TC vitals for the requested init time and put it in the aforementioned file.
   `scripts/wget_tcvitals.csh $ymd $h tcvit_rsmc_storms.txt`
   where `$ymd` is the initialization time in yyyymmdd format and `$h` is hour. 
   
@@ -151,6 +153,6 @@ As of version 3.9.1, the vortex tracker can process netCDF input.  Longitude mus
 
 # Run tracker on GFS - <a href="https://docs.google.com/document/d/1vgNUB4GW0FOgpD3tZUm8GQ2jV8ECW5SI7tfZVcX12UU/edit?usp=sharing">Google Doc</a>
 
-## Matching
+## Matching TCs
 
 ## Stats
