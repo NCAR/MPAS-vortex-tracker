@@ -21,8 +21,11 @@ set EXECUTABLE=$SCRATCH/MPAS-vortex-tracker/bin/mpas_to_latlon
 
 set meshid=tk707_conus
 set fields_to_interpolate=$SCRATCH/MPAS-vortex-tracker/scripts/mpas_fields_to_interpolate.txt
-set idir=/glade/campaign/mmm/wmr/weiwang/cps/irma3/2020/tk707_conus
 set workdir=$TMPDIR
+
+# input directory.
+set idir="$1"
+shift
 
 while ("$1" != "")
 	if ("$1" == "-d") then 
@@ -66,10 +69,6 @@ while ("$1" != "")
 		shift
 		set meshid="$1"
 	endif
-	if ("$1" == "-i") then # optional argument -i determines input directory.
-		shift
-		set idir="$1"
-	endif
 	if ("$1" == "-w") then # optional argument -w determines working directory.
 		shift
 		set workdir="$1"
@@ -108,11 +107,12 @@ if ($status != 0) then
     exit 2
 endif
 # used by mpas_ll_gettrk.csh
-cat <<BOUNDS>bounds.csh
+cat <<BOUNDS>$TMPDIR/mpas_to_latlon_bounds.csh
 setenv latmin $latmin
 setenv latmax $latmax
 setenv lonmin $lonmin
 setenv lonmax $lonmax
+setenv meshid $meshid
 BOUNDS
 foreach f ($idir/diag*.20??-??-??_0[06].00.00.nc $idir/diag*.20??-??-??_1[28].00.00.nc )
     set ofile=$odir/`basename $f`

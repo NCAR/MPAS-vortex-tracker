@@ -4,7 +4,7 @@
 # remember to interpolate to lat/lon with run_mpas_to_latlon.csh first
 
 # usage
-# mpas_ll_gettrk.csh [-w model] [-t (tracker|tcgen)] [-d] [-i workdir_parent] [--justplot]
+# mpas_ll_gettrk.csh [-w model] [-t (tracker|tcgen)] [-d] [--justplot]
 
 module load conda
 conda activate npl-2024b
@@ -17,7 +17,6 @@ setenv EXEDIR $SCRATCH/MPAS-vortex-tracker
 set debug=0
 set dxdetails=_0.500deg_025km
 set justplot=0
-set meshid=tk707_conus
 set trackertype=tcgen # trackertype=tracker is traditional and only tracks stuff mentioned at t=0.  tcgen does genesis too
 set workdir=$TMPDIR
 
@@ -25,10 +24,6 @@ while ("$1" != "")
 	if ("$1" == "--dx") then # optional argument --dx grid spacing and smoothing directory. 
 		shift
 		set dxdetails="$1"
-	endif
-	if ("$1" == "--mesh") then 
-		shift
-		set meshid="$1"
 	endif
 	if ("$1" == "-t") then # optional argument -t can determine trackertype. (tracker or tcgen)
 		shift
@@ -50,10 +45,13 @@ if ("$1" != "") then
 	exit
 endif
 
+# mpas_to_latlon_bounds.csh created with run_mpas_to_latlon.csh
 # make north and south boundaries just inside boundaries of diag.latlon files.
-source ./bounds.csh
+source $TMPDIR/mpas_to_latlon_bounds.csh
 set northbd=`echo "$latmax - 5"|bc`
 set southbd=`echo "$latmin + 5"|bc`
+set westbd=`echo "$lonmin + 5"|bc`
+set eastbd=`echo "$lonmax - 5"|bc`
 
 cd $workdir/$meshid/latlon$dxdetails
 if ($justplot) goto PLOT
@@ -131,8 +129,8 @@ cat <<NL > namelist
       atcfnum=0, atcfname='MPAS',
       atcfymdh=$bcc$byy$m${dd}$h, atcffreq=600
 /
-&trackerinfo trkrinfo%westbd=0,
-  trkrinfo%eastbd=360,
+&trackerinfo trkrinfo%westbd=$westbd,
+  trkrinfo%eastbd=$eastbd,
   trkrinfo%northbd=$northbd,
   trkrinfo%southbd=$southbd,
   trkrinfo%type='$trackertype',
