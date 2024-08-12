@@ -74,7 +74,8 @@ program mpas_to_latlon
     real (kind=RKIND), dimension(3,max_lat_dimsize,max_lon_dimsize) :: interp_weights
     integer, dimension(3,max_lat_dimsize,max_lon_dimsize) :: interp_cells
     integer :: nlat, nlon, start_vertex, idimn, iatt
-    real (kind=RKIND) :: latitude, longitude, startLon, degreesToRadians, RadiansToDegrees, lat0, lat1
+    real (kind=RKIND) :: latitude, longitude, startLon, endLon 
+    real (kind=RKIND) :: degreesToRadians, RadiansToDegrees, lat0, lat1
     character (len=256) :: fname, arg, savfile, outfile, tmpdir
     character (len=256) :: meshid, attname
     logical :: file_exists 
@@ -87,7 +88,7 @@ program mpas_to_latlon
     if (iargc() < 3) then
        write(0,*) 
        write(0,*) 'Usage:'
-       write(0,*) 'mpas_to_latlon fname outfile grid_spacing filter_radius_km meshid [lat0 [lat1 [startLon]]]'
+       write(0,*) 'mpas_to_latlon fname outfile grid_spacing filter_radius_km meshid [lat0 [lat1 [startLon [endLon]]]]'
        write(0,*) 
        write(0,*) ' fname            : input MPAS filename'
        write(0,*) ' outfile          : output filename'
@@ -120,12 +121,15 @@ program mpas_to_latlon
     lat0 = -90.0
     lat1 =  90.0
     startLon = -180.
+    endLon = 180.
     call getarg(6,arg)
     if (len_trim(arg).ne.0) read(arg,*) lat0 
     call getarg(7,arg)
     if (len_trim(arg).ne.0) read(arg,*) lat1
     call getarg(8,arg)
     if (len_trim(arg).ne.0) read(arg,*) startLon
+    call getarg(9,arg)
+    if (len_trim(arg).ne.0) read(arg,*) endLon
 
 
     !
@@ -133,7 +137,7 @@ program mpas_to_latlon
     !
 
     nlat = ceiling((lat1-lat0) / grid_spacing)
-    nlon = ceiling(360. / grid_spacing)
+    nlon = ceiling((endLon - startLon) / grid_spacing)
     if(nlat>max_lat_dimsize.or.nlon>max_lon_dimsize)then
        write(0,*)
        write(0,*)' mpas_to_latlon: either max_lat_dimsize or max_lon_dimsize is too small. '
@@ -446,8 +450,8 @@ program mpas_to_latlon
     ! Tried to zero-pad lat and lon so we don't get spaces in the filename, but
     ! fortran only zero-pads integers.
     ! SP turns on leading + or - for the rest of the format string. 
-    write(fmt='(A,"/",A,"_",I8.8,"_",F5.3,"deg",SP,F7.3,"N",F7.3,"N",F8.3,"E")', unit=savfile) &
-      TRIM(tmpdir),trim(meshid), nCells, grid_spacing, lat0, lat1, startLon
+    write(fmt='(A,"/",A,"_",I8.8,"_",F5.3,"deg",SP,F7.3,"N",F7.3,"N",F8.3,"E",F8.3,"E")', unit=savfile) &
+        TRIM(tmpdir),trim(meshid), nCells, grid_spacing, lat0, lat1, startLon, endLon
     write(0,'(A)')'looking for save file "'//trim(savfile)//'"'
     inquire(file=savfile, exist=file_exists)
     if (file_exists) then 

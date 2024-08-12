@@ -14,7 +14,8 @@ set debug=0
 set delta=0.5
 set latmin=-5
 set latmax=55
-set lon0=0
+set lonmin=0
+set lonmax=360
 set filter_radius_km=25
 set EXECUTABLE=$SCRATCH/MPAS-vortex-tracker/bin/mpas_to_latlon
 
@@ -53,9 +54,13 @@ while ("$1" != "")
 		shift
 		set latmax="$1"
 	endif
-	if ("$1" == "--lon0") then # optional argument lon0 overrides default western longitude (gettrk likes 0)
+	if ("$1" == "--lonmin") then # optional argument lonmin overrides default western longitude (gettrk likes 0)
 		shift
-		set lon0="$1"
+		set lonmin="$1"
+	endif
+	if ("$1" == "--lonmax") then # optional argument lonmax overrides default maximum longitude
+		shift
+		set lonmax="$1"
 	endif
 	if ("$1" == "--mesh") then 
 		shift
@@ -106,6 +111,8 @@ endif
 cat <<BOUNDS>bounds.csh
 setenv latmin $latmin
 setenv latmax $latmax
+setenv lonmin $lonmin
+setenv lonmax $lonmax
 BOUNDS
 foreach f ($idir/diag*.20??-??-??_0[06].00.00.nc $idir/diag*.20??-??-??_1[28].00.00.nc )
     set ofile=$odir/`basename $f`
@@ -113,7 +120,7 @@ foreach f ($idir/diag*.20??-??-??_0[06].00.00.nc $idir/diag*.20??-??-??_1[28].00
     # `ls -t1 $f $ofile` lists files one on each line with newest first
     if (! -e $ofile || `ls -1t $f $ofile|head -n 1` == $f ) then
 
-        set args = (`printf '%s %5.3f %02d %s %4.1f %4.1f %6.1f' $ofile $delta $filter_radius_km $meshid $latmin $latmax $lon0`)
+        set args = (`printf '%s %5.3f %02d %s %4.1f %4.1f %6.1f %6.1f' $ofile $delta $filter_radius_km $meshid $latmin $latmax $lonmin $lonmax`)
         # Stored list of fields to interpolate in file. Oct 6, 2017. 
         echo "grep -v '#' $fields_to_interpolate | $EXECUTABLE $f $args"
         grep -v '#' $fields_to_interpolate | $EXECUTABLE $f $args
