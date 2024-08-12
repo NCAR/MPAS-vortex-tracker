@@ -26,10 +26,10 @@ If you have never interpolated a particular mesh before, `mpas_to_latlon` will f
 ```
 setenv TMPDIR /glade/scratch/$USER/temp
 mkdir -p $TMPDIR
-echo precipw | bin/mpas_to_latlon init.nc $TMPDIR/latlon.init.nc 0.5 25 mpas3 -5 50 0
+echo precipw | bin/mpas_to_latlon init.nc $TMPDIR/latlon.init.nc 0.5 25 mpas3 -5 50 0 360
 ```
 
-The echo command pipes the field name `precipw` into `mpas_to_latlon`. In this case, `mpas_to_latlon` will create two files. The first file is a save file in `$TMPDIR`. It is called `mpas3_02621442_0.500deg -5.000N+50.000N  +0.000E`. The min and max latitude and the min longitude portions of the file name are fixed-width format, so they may contain spaces. For example, in this case, there is a space before the southernmost latitude portion `-5.000N` of the file name and two spaces before the min longitude `lon0` portion of the file name. `02621442` is the number of cells in the mesh (zero-padded). The save file will be reused next time this `mpas3` mesh is interpolated. The second file is the interpolated output, `$TMPDIR/latlon.init.nc`. It may be deleted, but could be useful for debugging. 
+The echo command pipes the field name `precipw` into `mpas_to_latlon`. In this case, `mpas_to_latlon` will create two files. The first file is a save file in `$TMPDIR`. It is called `mpas3_02621442_0.500deg -5.000N+50.000N  +0.000E+360.000E`. The min and max latitude and the min longitude portions of the file name are fixed-width format, so they may contain spaces. For example, in this case, there is a space before the southernmost latitude portion `-5.000N` of the file name and two spaces before the min longitude `minlon` portion of the file name. `02621442` is the number of cells in the mesh (zero-padded). The save file will be reused next time this `mpas3` mesh is interpolated. The second file is the interpolated output, `$TMPDIR/latlon.init.nc`. It may be deleted, but could be useful for debugging. 
 
 To interpolate multiple fields, provide a list of fields to mpas_to_latlon.  These may be typed in manually or be in a text file, one to a line, like this:
 
@@ -45,7 +45,7 @@ z_isobaric
 ```
 
 #### Usage
-`cat scripts/mpas_fields_to_interpolate.txt | grep -v # | bin/mpas_to_latlon fname outfile grid_spacing filter_radius_km meshid [lat0 [lat1 [startLon]]]`
+`cat scripts/mpas_fields_to_interpolate.txt | grep -v # | bin/mpas_to_latlon fname outfile grid_spacing filter_radius_km meshid [lat0 [lat1 [startLon [endLon]]]]`
 
 
 #### Defaults:
@@ -58,10 +58,11 @@ z_isobaric
  lat0             : minimum latitude in deg (default -90)
  lat1             : maximum latitude in deg (default +90)
  startLon         : starting longitude for output grid (default -180)
+ endLon           : ending longitude for output grid (default 180)
 ```
 
 #### Example:
-```cat mpas_fields_to_interpolate.txt | mpas_to_latlon diagnostics.2013-09-01_00:00:00.nc latlon_0.500deg_25km/outfile.nc 0.5 25 mpas3 -5 50 0```
+```cat mpas_fields_to_interpolate.txt | mpas_to_latlon diagnostics.2013-09-01_00:00:00.nc latlon_0.500deg_25km/outfile.nc 0.5 25 mpas3 -5 50 0 360```
 
 This example interpolates the list of fields in mpas_fields_to_interpolate.txt to a 0.5 degree lat-lon grid after smoothing with a radius of influence of 25 km.  meshid is the arbitrary string label describing the MPAS mesh. Choosing a unique string can help distinguish different basins, even if the meshes have the same number of cells and the same lat-lon output parameters.  For example, I use `wp` for the western Pacific mesh and `ep` for the eastern Pacific mesh. In this example, the string description of the MPAS mesh is mpas3 and the latitude range is -5 to +50 N. The output file is called output.nc, but in practice, it is helpful to use a more descriptive name or subdirectory like `latlon_0.500deg_25km/diag.2013-09-01_00:00:00.nc`. Keep in mind, if the subdirectory does not exist already, or you don't have permission to write to the subdirectory, mpas_to_latlon will exit with an error.
 
@@ -99,7 +100,7 @@ A shell script `scripts/run_mpas_to_latlon.csh` runs `mpas_to_latlon` on all the
 
 #### Usage
 
-`scripts/run_mpas_to_latlon.csh [-i idir] [-w working_dir] [--mesh mesh_id] [--delta d] [--executable EXECUTABLE] [-t fields_to_interpolate] [--lat0 lat0] [--lat1 lat1] [--filter_radius_km filter_radius_km] [--lon0 lon0]`
+`scripts/run_mpas_to_latlon.csh [-i idir] [-w working_dir] [--mesh mesh_id] [--delta d] [--executable EXECUTABLE] [-t fields_to_interpolate] [--lat0 lat0] [--lat1 lat1] [--filter_radius_km filter_radius_km] [--lonmin lonmin] [--lonmax lonmax]`
 
 #### Defaults:
 ```
@@ -110,7 +111,8 @@ EXECUTABLE                       : $SCRATCH/MPAS-vortex-tracker/bin/mpas_to_latl
 fields_to_interpolate file       : $SCRATCH/MPAS-vortex-tracker/scripts/mpas_fields_to_interpolate.txt
 southern latitude (lat0)         : -5 (5°S)
 northern latitude (lat1)         : 55 (55°N)
-starting longitude (lon0)        : 0 (0°E)
+starting longitude (lonmin)      : 0 (0°E)
+ending longitude (lonmax)        : 360 (360°E)
 filter radius (filter_radius_km) : 25 (25 km)
 Arguments may be in any order.
 ```
