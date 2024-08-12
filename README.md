@@ -100,7 +100,9 @@ A shell script `scripts/run_mpas_to_latlon.csh` runs `mpas_to_latlon` on all the
 
 #### Usage
 
-`scripts/run_mpas_to_latlon.csh [-i idir] [-w working_dir] [--mesh mesh_id] [--delta d] [--executable EXECUTABLE] [-t fields_to_interpolate] [--lat0 lat0] [--lat1 lat1] [--filter_radius_km filter_radius_km] [--lonmin lonmin] [--lonmax lonmax]`
+`scripts/run_mpas_to_latlon.csh idir [-w working_dir] [--mesh mesh_id] [--delta d] [--executable EXECUTABLE] [-t fields_to_interpolate] [--lat0 lat0] [--lat1 lat1] [--filter_radius_km filter_radius_km] [--lonmin lonmin] [--lonmax lonmax]`
+
+where idir is the path to the diagnostic netcdf files.
 
 #### Defaults:
 ```
@@ -118,7 +120,9 @@ Arguments may be in any order.
 ```
 
 #### Example: 
-```scripts/run_mpas_to_latlon.csh --mesh mpas15```
+```
+scripts/run_mpas_to_latlon.csh /glade/campaign/mmm/wmr/weiwang/cps/irma3/2020/tk707_conus --mesh mpas15
+```
 
 This will Interpolate all `diag*.nc` files in `$TMPDIR/mpas15/` to a lat-lon grid. 
 
