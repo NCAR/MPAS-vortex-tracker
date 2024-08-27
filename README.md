@@ -19,6 +19,9 @@ make
 cd ..
 ```
 
+> [!NOTE]
+> module purge will unload modules that are needed. Use module reset instead.
+
 creates executable: `mpas_to_latlon` 
 
 If you have never interpolated a particular mesh before, `mpas_to_latlon` will first create a save file.  The save file will contain expensive triangulation information and a time variable. To create the save file, run `mpas_to_latlon` on a file that has the variables latCell, lonCell and xtime. init.nc is such a file. `mpas_to_latlon` will create the save file in the path defined in the environmental variable `TMPDIR`. Set the environmental variable `TMPDIR` and make it with mkdir, if it doesn't exist already. Finally, execute `mpas_to_latlon`. Ask for a field that is in `init.nc`, like `precipw`. 
