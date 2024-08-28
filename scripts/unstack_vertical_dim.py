@@ -99,7 +99,7 @@ ds["time"] = pd.to_datetime(ds.time)
 # Tracker program gettrk_main.f v3.9a can't handle variables with a vertical dimension.
 # It assumes a variable has only one pressure level.
 # remove these variables.
-drop_vars = ["z_isobaric","z_iso_levels","uzonal_isobaric","umeridional_isobaric", "t_isobaric"]
+drop_vars = ["z_isobaric","z_iso_levels","uzonal_isobaric","umeridional_isobaric", "t_isobaric", "t_iso_levels"]
 for var in drop_vars:
     if var in ds:
         ds = ds.drop_vars(var)

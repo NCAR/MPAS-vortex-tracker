@@ -1,7 +1,6 @@
 """
 Read ATCF file
 Optionally replace vitals with raw values from original mesh
-Plot tracks meeting length and strength criteria.
 Plots for different basins. 
 """
 import argparse
@@ -20,19 +19,15 @@ from atcf import (
         )
 import logging
 import matplotlib.pyplot as plt
-import nos
 import pandas as pd
 import pdb
 import re
-from stormevents.nhc import VortexTrack
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", force=True)
 
-def bestTrack(df:pd.DataFrame) -> pd.DataFrame:
+def bestTrack(stormname:str) -> pd.DataFrame:
+    from stormevents.nhc import VortexTrack
     # BEST track
-    stormname = df.basin + df.cy + df.valid_time.dt.strftime("%Y")
-    assert stormname.nunique() == 1, 'more than one storm in DataFrame'
-    stormname = stormname.iloc[0]
     tfile = os.path.join(os.getenv("TMPDIR"), f"{stormname}.csv")
     if os.path.exists(tfile):
         logging.warning(f"read {tfile}")
@@ -63,8 +58,6 @@ def main(args):
     diagdir = args.diagdir
     extent = args.extent
     initfile = args.initfile
-    initial_time = pd.to_datetime(args.initial_time)
-    models  = args.models
     origmesh = args.origmesh
     wind_radii_method= args.wind_radii_method
 
@@ -83,17 +76,6 @@ def main(args):
 
     # A track has a unique combination of basin, cy, initial_time, and model
     unique_track = ['basin', 'cy', 'initial_time', 'model']
-
-    # Skip lines not from a specifically-requested initialization time.
-    if initial_time:
-        df = df[df.initial_time == initial_time]
-        logging.info(f"kept {len(df)} {initial_time} initialization times")
-
-    # Skip lines not from a specifically-requested model.
-    if models:
-        df = df[df['model'].isin(models)]
-        logging.info(f"kept {len(df)} {models} lines.")
-
 
     # If you need original mesh values, initialize diagdir and initfile.
     if origmesh:
@@ -117,10 +99,6 @@ def main(args):
             # Add this column value to title. It doesn't vary.
             title += " " + col + "= " + str(df[col].iloc[0])
 
-    # Remove long tracks (for debugging)
-    #df = df.groupby(unique_track).filter(lambda x: x["fhr"].nunique() < 9 )
-    #print(df.groupby(unique_track).ngroups, 'after long track filter')
-
     def get_origmesh(track, initfile):
         basin, cy, initial_time, model = track.name
         # Do you need to find the original mesh values? Not if track has defined originalmeshfile . 
@@ -132,6 +110,9 @@ def main(args):
                     "That is odd. You requested original mesh values but the atcf file already has non-zero radii")
             logging.info(f"{model} getting radius of max wind and radii of 34/50/64 kt wind from {diagdir}")
             og = origgrid(track, diagdir, ensemble_prefix=["PF","CF","EE","EE0"], wind_radii_method=wind_radii_method)
+        elif (model == 'MPAS'):
+            import mpas
+            og, initfile = mpas.origmesh(track, initfile, diagdir, wind_radii_method=wind_radii_method)
         else:
             logging.warning(f"no origmesh for {model}")
             return track # used to exit return code=3 but why do that if you have OFCL forecast in same file as model forecasts? that's fine.
@@ -140,10 +121,10 @@ def main(args):
     if origmesh:
         # cannot use .apply on an empty dataframe without losing columns (which you need for "basin" filter below).
         if not df.empty:
-            df = df.groupby(unique_track).apply(get_origmesh, initfile)
-        df = df.reset_index(drop=True) # reset_index avoids ValueError: 'basin' is both an index level and a column label, which is ambiguous. 
+            df = df.groupby(unique_track).apply(get_origmesh, initfile, include_groups=False)
+        df = df.reset_index(drop=False)
         # Keep if not a cyclogenesis track or TS strength for at least one time.
-        df = df.groupby(unique_track).filter(lambda x: (x["basin"] != "TG").all() or (x["vmax"].max() >=  34))
+        df = df.groupby(unique_track).filter(lambda x: (x.name[unique_track.index("basin")] != "TG") or (x["vmax"].max() >=  34))
         logging.info(f"after origmesh {df.groupby(unique_track).ngroups}")
         write(df, origmeshFile)
         atcf_file = origmeshFile
@@ -153,7 +134,7 @@ def main(args):
 
     if ax is None:
         logging.warning("ax is None, so create fig and ax")
-        fig = plt.figure(figsize=(11,7.5))
+        fig = plt.figure(figsize=(10,7.5))
         ax = plt.axes(projection=cartopy.crs.PlateCarree())
     ax = decorate_ax(ax)
 
@@ -168,7 +149,7 @@ def main(args):
     # Convert ECMWF ensemble Vmax from 10-min to 1-min average
     ten2one = atcf_file.endswith("scaled_vmax") or atcf_file.endswith("scaled_vmax.Knaff_Zehr_pmin")
     for (basin, cy, initial_time, model), track in df.groupby(unique_track):
-        linewidth = 0.75
+        linewidth = 2
         linestyle = "solid"
         alpha = args.alpha
         if model == "OFCL":
@@ -177,6 +158,7 @@ def main(args):
             alpha = 1
             ten2one = False # Assume OFCL Vmaxl is already 1-min average
         if ten2one:
+            import nos
             logging.warning(f"convert {model} vmax 10-min average to 1-min") 
             track["vmax"] = track["vmax"] / nos.one2ten
         start_label = None
@@ -184,22 +166,23 @@ def main(args):
         duration  = track.valid_time.max() - track.valid_time.min()
         logging.info(f'plot_track {cy} {model} {duration}')
         plot_track(ax, start_label, track, end_label,
-                label_interval_hours=None,
+                label_interval_hours=24,
                 alpha=alpha,
                 linewidth=linewidth,
                 linestyle=linestyle,
                 )
-    if False:
-        idf = bestTrack(df)
+    if args.stormname:
+        idf = bestTrack(args.stormname)
         plot_track(
                     ax,
                     "",
                     idf, 
                     "",
                     label_interval_hours=24,
-                    linewidth = 4,
+                    linewidth = 3,
                     linestyle = "solid",
                     scale=2,
+                    alpha=0.4,
                 )
 
 
@@ -220,8 +203,8 @@ def get_parser():
     parser.add_argument('-d','--debug', action="store_true", help='print debug messages')
     parser.add_argument('--diagdir', help='path to directory with original model diagnostic files. In case of ensemble, path to directory above member subdirectories i.e. do not include member subdirectory.')
     parser.add_argument('--initfile', help='path to init.nc file with latCell,lonCell,nEdgesOnCell,cellsOnCell')
-    parser.add_argument('--initial_time', help='initialization date/hour')
-    parser.add_argument('--models', nargs='*', help='only plot this model(s)')
+    parser.add_argument('--ofile', help='output filename')
+    parser.add_argument('--stormname', help='plot best track. name like al02024')
 
     origmesh_group = parser.add_mutually_exclusive_group()
     origmesh_group.add_argument('--origmesh',    dest='origmesh', action="store_true", help='use original mesh')
@@ -236,12 +219,15 @@ def get_parser():
 
 def finish(args):
     """add legend and fine print"""
-    legax = TClegend()
+    legax = TClegend(aspect=30, pad=0.08)
     fineprint = f"{args} created {pd.Timestamp.now()}" 
     plt.annotate(text=fineprint, xy=(10,2), xycoords='figure pixels', fontsize=5, wrap=True)
     atcf_file = os.path.realpath(args.atcf_file.name)
     sfx = f".{args.basin}.png" if args.basin else ".png"
-    ofile = atcf_file + sfx
+    if args.ofile:
+        ofile = args.ofile
+    else:
+        ofile = atcf_file + sfx
     plt.savefig(ofile, dpi=120)
     logging.warning(ofile)
 

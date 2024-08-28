@@ -231,7 +231,5 @@ set atcf_with_warmcore_column=fort.64
 # -f force overwrite 
 # The 1st basin sets the lat/lon grid tick interval for all basins.
 set echo
-# TODO: allow cp basin. when I added cp to the basin list, it collapsed the global plot longitude range to zero.
-python ~ahijevyc/bin/plot_atcf.py $atcf_with_warmcore_column --basin global al wp ep io \
-    --origmesh --diagdir ../ --initfile $meshid/init.nc --force_new 
-
+python ~ahijevyc/bin/plot_atcf.py $atcf_with_warmcore_column --basin global \
+    --origmesh --diagdir ../ --initfile $meshid/init.nc
