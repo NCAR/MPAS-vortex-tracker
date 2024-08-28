@@ -64,6 +64,9 @@ z_isobaric
  endLon           : ending longitude for output grid (default 180)
 ```
 
+> [!WARNING]
+> If the model is regional, trim the lat-lon domain to fit within the model region. It lat-lon files have cells outside the model domain, the tracker will complain about the mslp contour intervals. It cannot handle mslp=0. Make sure the interpolated domain is completely within the domain of valid model output.
+
 #### Example:
 ```cat mpas_fields_to_interpolate.txt | mpas_to_latlon diagnostics.2013-09-01_00:00:00.nc latlon_0.500deg_25km/outfile.nc 0.5 25 mpas3 -5 50 0 360```
 
@@ -160,6 +163,9 @@ As of version 3.9.1, the vortex tracker can process netCDF input.  Longitude mus
   - Run tracker that was compiled from [https://github.com/NCAR/MPAS-vortex-tracker.git](https://github.com/ahijevyc/standalone_gfdl-vortextracker.git)
     
   	`$BINDIR/gettrk.exe < namelist > log`
+
+> [!WARNING]
+> tracker will choke on missing data. If the lat-lon files have cells outside the model domain, the tracker will complain about the mslp contour intervals. It cannot handle mslp=0. Make sure the interpolated domain is completely within the domain of valid model output.
 
 # Run tracker on GFS - <a href="https://docs.google.com/document/d/1vgNUB4GW0FOgpD3tZUm8GQ2jV8ECW5SI7tfZVcX12UU/edit?usp=sharing">Google Doc</a>
 
